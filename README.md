@@ -31,6 +31,13 @@ minutes later, in the middle of something else: *what did that say?*
   notification service's state file and toggled with
   `omarchy-toggle-notification-silencing`: the shell does not hand its
   service to third-party plugins.
+- **The bell is an indicator** in the middle of the bar (`Indicator.qml`,
+  copied into the `predmaxim.indicators` clone by a hook in my dotfiles):
+  shown while there is something new (a dot) or notifications are silenced
+  (crossed out, red), otherwise only when the indicator group is hovered.
+  Right-click silences. The widget itself stays in the bar, hidden, for its
+  settings and IPC, and writes the count of new important notifications to
+  `unread` in the store for the indicator.
 - Text in the system language (`I18n.js`, Russian). Kept for 30 days; the
   badge, list height and keep-days settings are gone.
 - Tests: `node test.js`.
