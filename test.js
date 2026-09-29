@@ -41,7 +41,7 @@ assert.strictEqual(M.activation({ app: "omarchy-action", summary: "Time to recha
 
 // Every tr() in the QML has a Russian line
 const I = new Function(load("I18n.js") + "; return { TABLES }")()
-const qml = ["Panel.qml", "components/NotificationRow.qml"].map(load).join("\n")
+const qml = ["Panel.qml", "Indicator.qml", "components/NotificationRow.qml"].map(load).join("\n")
 for (const m of qml.matchAll(/\btr\("((?:[^"\\]|\\.)*)"/g))
   assert.ok(Object.prototype.hasOwnProperty.call(I.TABLES.ru, JSON.parse(`"${m[1]}"`)), "no ru for: " + m[1])
 

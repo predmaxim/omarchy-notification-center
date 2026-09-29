@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "@PLUGIN_DIR@/I18n.js" as I18n
 
 // The notification center among the bar's indicators: shown while something
 // new has come in (a green dot on the bell) or notifications are silenced
@@ -11,19 +12,20 @@ import qs.Ui
 // silences. The count comes from the file the widget keeps it in, DND from
 // the notification service's state file.
 // keep-custom-widgets.sh copies this file into the predmaxim.indicators clone
-// as indicators/Notifications.qml.
+// as indicators/Notifications.qml, filling in @PLUGIN_DIR@.
 BarIndicator {
   id: root
 
   property int unread: 0
   property bool dnd: false
+  readonly property var tr: I18n.translator(I18n.textLanguage(function(name) { return Quickshell.env(name) }))
 
   active: unread > 0 || dnd
   // U+F009B (bell-off), U+F009A (bell).
   activeText: dnd ? "󰂛" : "󰂚"
   inactiveText: "󰂚"
-  activeTooltipText: dnd ? "Не беспокоить" : "Новых уведомлений: " + unread
-  inactiveTooltipText: "Уведомления"
+  activeTooltipText: dnd ? root.tr("Notifications silenced") : root.tr("New: %1", unread)
+  inactiveTooltipText: root.tr("Notifications")
   // Not the theme's red: themes set it to anything.
   useActiveColor: dnd
   activeColor: "#e5534b"
