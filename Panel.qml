@@ -340,48 +340,23 @@ Panel {
 
   // --------------------------------------------------------------------- bar
 
-  implicitWidth: button.implicitWidth
-  implicitHeight: button.implicitHeight
+  // The bell is among the bar's indicators (Indicator.qml, copied into the
+  // predmaxim.indicators clone by keep-custom-widgets.sh); the widget stays
+  // in the bar, hidden, for its settings and IPC. The indicator can't reach
+  // this plugin's service, so the count of new important notifications is
+  // left for it in a file.
+  visible: false
+  implicitWidth: 0
+  implicitHeight: 0
 
-  BarIconButton {
-    id: button
-    anchors.left: parent.left
-    anchors.top: parent.top
-    anchors.bottom: parent.bottom
-    bar: root.bar
-    // Between the indicator icons beside it (caption) and the full bar icons.
-    fontSize: Style.font.body
-    fixedWidth: vertical ? -1 : Style.bar.statusSlot
-    fixedHeight: vertical ? Style.bar.statusSlot : -1
-
-    // U+F009B (bell-off) while silenced, U+F009A (bell) otherwise; the first is
-    // the glyph of the shell's own DND indicator.
-    text: root.dnd ? "\uDB80\uDC9B" : "\uDB80\uDC9A"
-    active: root.dnd
-    activeColor: root.silencedColor
-    tooltipText: root.dnd ? root.tr("Notifications silenced")
-      : root.unread > 0 ? root.tr("New: %1", root.unread) : root.tr("Notifications")
-
-    // Right-click silences without opening anything.
-    onPressed: function(b) {
-      if (b === Qt.RightButton) root.toggleDnd()
-      else root.toggle()
-    }
+  FileView {
+    id: unreadFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy-notification-center/unread"
+    printErrors: false
   }
 
-  // Something new: a dot over the bell's top right corner, in the theme's
-  // accent (green here). Over rather than beside, so the bar keeps its width.
-  Rectangle {
-    visible: root.unread > 0
-    anchors.right: button.right
-    anchors.rightMargin: Style.space(3)
-    anchors.top: button.top
-    anchors.topMargin: Style.space(5)
-    width: Style.space(6)
-    height: width
-    radius: width / 2
-    color: Color.accent
-  }
+  onUnreadChanged: if (loaded) unreadFile.setText(String(unread))
+  onLoadedChanged: if (loaded) unreadFile.setText(String(unread))
 
   // ------------------------------------------------------------------- panel
 
