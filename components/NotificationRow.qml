@@ -35,6 +35,9 @@ Item {
   property bool showBody: true
   property bool showPreview: true
   property bool unread: false
+  // Picked with the keyboard: drawn like a hover.
+  property bool selected: false
+  property var tr: function(text) { return text }
 
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
@@ -80,8 +83,8 @@ Item {
   // written above the card.
   readonly property string when: {
     var age = Math.max(0, now - timestamp)
-    if (age < 60000) return "now"
-    if (age < 3600000) return Math.round(age / 60000) + "m ago"
+    if (age < 60000) return root.tr("now")
+    if (age < 3600000) return root.tr("%1m ago", Math.round(age / 60000))
     return Qt.formatDateTime(new Date(timestamp), "HH:mm")
   }
 
@@ -110,7 +113,7 @@ Item {
     // a dark one, which a hardcoded panel tint would not: the card is always
     // whatever contrasts with the panel it is on.
     color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b,
-                   root.hovered ? 0.11 : 0.06)
+                   root.hovered || root.selected ? 0.11 : 0.06)
     radius: Style.space(12)
 
     Behavior on color { ColorAnimation { duration: 90 } }
@@ -380,7 +383,7 @@ Item {
       width: Style.space(5)
       height: width
       radius: width / 2
-      color: Color.accent
+      color: root.foreground
     }
   }
 }
