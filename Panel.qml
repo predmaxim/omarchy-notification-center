@@ -349,6 +349,10 @@ Panel {
     anchors.top: parent.top
     anchors.bottom: parent.bottom
     bar: root.bar
+    // Between the indicator icons beside it (caption) and the full bar icons.
+    fontSize: Style.font.body
+    fixedWidth: vertical ? -1 : Style.bar.statusSlot
+    fixedHeight: vertical ? Style.bar.statusSlot : -1
 
     // U+F009B (bell-off) while silenced, U+F009A (bell) otherwise; the first is
     // the glyph of the shell's own DND indicator.
