@@ -2,10 +2,13 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 
 import "components"
+import "Model.js" as Model
+import "I18n.js" as I18n
 
 // A notification center for Omarchy: everything you were sent, still there
 // when you go back for it.
@@ -40,13 +43,43 @@ Panel {
   // ----------------------------------------------------------------- settings
 
   readonly property int panelWidth: setting("panelWidth", 420)
-  readonly property int listHeight: setting("listHeight", 0)
-  readonly property string badge: setting("badge", "Dot")
   readonly property int keepDays: setting("keepDays", 30)
   readonly property int maxItems: setting("maxItems", 1000)
   readonly property string clickAction: setting("clickAction", "Auto")
   readonly property bool showBody: setting("showBody", true)
   readonly property bool showPreview: setting("showPreview", true)
+  // Only notifications from the ticked sources are shown and counted as new;
+  // the archive still keeps everything, so ticking one brings its past back.
+  readonly property bool onlyImportant: setting("onlyImportant", true)
+  readonly property var important: setting("important", Model.DEFAULT_IMPORTANT)
+
+  // Interface text in the system's language (I18n.js).
+  readonly property var tr: I18n.translator(I18n.textLanguage(function(name) { return Quickshell.env(name) }))
+
+  // Same write path as the built-in clock: the value lands inline on this
+  // widget's shell.json entry and comes back through setting().
+  function saveSetting(name, value) {
+    var entry = { id: root.moduleName }
+    for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
+    entry[name] = value
+    root.settings = entry
+    if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.moduleName, entry)
+  }
+
+  function toggleSource(source) {
+    var next = important.slice()
+    var i = next.indexOf(source)
+    if (i >= 0) next.splice(i, 1)
+    else next.push(source)
+    saveSetting("important", next)
+  }
+
+  function sourceLabel(source) {
+    if (source === "Reminders") return tr("Reminders")
+    if (source === "omarchy-action") return "Omarchy"
+    return source
+  }
 
   // ------------------------------------------------------------- the service
   //
@@ -55,19 +88,26 @@ Panel {
   // enabled under its own id, so the built-in name has to be resolved to
   // whichever copy is actually running, or the toggle silently does nothing on
   // exactly the machines that cared enough to clone it.
-  readonly property var notificationService: {
-    var host = bar && bar.shell ? bar.shell : null
-    if (!host || typeof host.serviceFor !== "function") return null
-    var id = "omarchy.notifications"
-    if (host.pluginRegistry && typeof host.pluginRegistry.resolveEnabledId === "function")
-      id = host.pluginRegistry.resolveEnabledId(id)
-    return host.serviceFor(id)
+  // Do Not Disturb. The shell hands its notification service only to its
+  // own plugins, so the state is read from the file the service keeps it in,
+  // and toggled with the same command as Omarchy's key for it.
+  property bool dnd: false
+
+  FileView {
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/notifications.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try { root.dnd = JSON.parse(text()).dnd === true } catch (e) {}
+    }
   }
 
-  readonly property bool dnd: notificationService ? notificationService.doNotDisturb : false
-
+  // Silenced: the bell is crossed out and red, on the bar and in the panel.
+  // Not the theme's red: themes set it to anything (green in the current one).
+  readonly property color silencedColor: "#e5534b"
   function toggleDnd() {
-    if (notificationService) notificationService.setDoNotDisturb(!notificationService.doNotDisturb)
+    Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-toggle-notification-silencing"])
   }
 
   // ------------------------------------------------------------- the store
@@ -127,10 +167,24 @@ Panel {
   // you opened it, which is the question you were asking.
   property double readMark: 0
   readonly property bool loaded: store ? store.loaded : false
-  property bool searching: false
+  property bool settingsOpen: false
+  // The row picked with Up/Down, -1 for none.
+  property int cursor: -1
   property double now: Date.now()
 
-  readonly property int unread: store ? store.unread : 0
+  // The store counts everything; only what this panel would show is news.
+  readonly property int unread: countSince(lastSeen)
+  // What was new when the panel opened; opening marks everything read.
+  readonly property int freshCount: countSince(readMark)
+
+  function countSince(mark) {
+    var count = 0
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].timestamp <= mark) break
+      if (passes(entries[i])) count++
+    }
+    return count
+  }
   readonly property double lastSeen: store ? store.lastSeen : 0
 
   Timer {
@@ -141,16 +195,17 @@ Panel {
     onTriggered: root.now = Date.now()
   }
 
-  function startSearch() {
-    searching = true
-    Qt.callLater(function() { if (root.searching) search.forceActiveFocus() })
+  function moveCursor(step) {
+    var next = cursor + step
+    if (next < -1 || next >= rows.count) return
+    cursor = next
+    if (cursor >= 0) list.positionViewAtIndex(cursor, ListView.Contain)
+    else list.positionViewAtBeginning()
   }
 
-  function endSearch() {
-    searching = false
-    filter = ""
-    search.text = ""
-    Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+  function toggleSettings() {
+    settingsOpen = !settingsOpen
+    if (!settingsOpen) Qt.callLater(function() { if (root.opened) search.forceActiveFocus() })
   }
 
   Process { id: focusProc }
@@ -177,7 +232,12 @@ Panel {
 
   ListModel { id: rows }
 
+  function passes(entry) {
+    return !onlyImportant || Model.isImportant(entry, important)
+  }
+
   function matches(entry) {
+    if (!passes(entry)) return false
     if (filter === "") return true
     var needle = filter.toLowerCase()
     return String(entry.app || "").toLowerCase().indexOf(needle) >= 0
@@ -204,12 +264,15 @@ Panel {
   }
 
   function rebuild() {
+    cursor = -1
     rows.clear()
     for (var i = 0; i < entries.length; i++)
       if (matches(entries[i])) rows.append(rowFor(entries[i]))
   }
 
   onFilterChanged: rebuild()
+  onOnlyImportantChanged: rebuild()
+  onImportantChanged: rebuild()
 
   // The heading a notification is filed under. Days rather than hours, because
   // what you remember about a notification you are hunting for is which day it
@@ -219,8 +282,8 @@ Panel {
     var when = new Date(timestamp)
     var now = new Date()
     var midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    if (timestamp >= midnight) return "Today"
-    if (timestamp >= midnight - 86400000) return "Yesterday"
+    if (timestamp >= midnight) return tr("Today")
+    if (timestamp >= midnight - 86400000) return tr("Yesterday")
     // Within the week the weekday is the better handle: "Tuesday" is how you
     // remember it, "17 August" is how you would have to work it out.
     if (timestamp >= midnight - 6 * 86400000) return Qt.formatDateTime(when, "dddd")
@@ -247,17 +310,13 @@ Panel {
       root.close()
       return
     }
-    // The app name is on the notification too, so it is the sender's to choose,
-    // and the focus helper matches it as a regular expression: an app calling
-    // itself ".*" would focus whichever window that hit first. Only something
-    // shaped like a name gets through.
-    if (!/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(row.app)) return
-    // Chat apps rarely register an action and simply expect a click to bring
-    // their window up. This is the helper the notification service uses for
-    // the same fallback, so a click here lands where a click on the toast
-    // would have.
-    focusProc.command = [root.omarchyPath + "/bin/omarchy-hyprland-focus-app", row.app]
-    focusProc.running = true
+    // Who sent it decides where to go: a site's web app, a shell plugin's
+    // panel, or the app's window (started if it has none). Model.activation
+    // only lets name-shaped values through, as arguments.
+    var argv = Model.activation(row, root.omarchyPath)
+    if (!argv || !root.store) return
+    if (argv[0] === "open-app") argv = root.store.storeCommand(argv)
+    Quickshell.execDetached(argv)
     root.close()
   }
 
@@ -267,7 +326,7 @@ Panel {
 
   onOpenedChanged: {
     if (!opened) {
-      searching = false
+      settingsOpen = false
       filter = ""
       search.text = ""
       return
@@ -276,6 +335,7 @@ Panel {
     if (store) store.load()
     readMark = lastSeen
     if (store) store.markSeen()
+    Qt.callLater(function() { if (root.opened) search.forceActiveFocus() })
   }
 
   // --------------------------------------------------------------------- bar
@@ -290,60 +350,25 @@ Panel {
     anchors.bottom: parent.bottom
     bar: root.bar
 
-    // A bell, and a bell with a line through it while notifications are
-    // silenced. The second is the same glyph the shell's own DND indicator
-    // uses, so the bar never shows two different pictures of one state.
-    // U+F009B (bell-off) and U+F009A (bell), written as surrogate pairs so the
-    // source survives editors that mangle private-use codepoints. The first is
-    // the glyph the shell's own DND indicator uses, so the bar never shows two
-    // different pictures of one state.
+    // U+F009B (bell-off) while silenced, U+F009A (bell) otherwise; the first is
+    // the glyph of the shell's own DND indicator.
     text: root.dnd ? "\uDB80\uDC9B" : "\uDB80\uDC9A"
-    dimmed: root.dnd
+    active: root.dnd
+    activeColor: root.silencedColor
+    tooltipText: root.dnd ? root.tr("Notifications silenced")
+      : root.unread > 0 ? root.tr("New: %1", root.unread) : root.tr("Notifications")
 
-    // The Highlight marker: no shape added beside the bell, the bell itself
-    // recoloured. BarIconButton already draws its glyph in activeColor while
-    // active, which is the same mechanism the bar's own indicators use to say
-    // a thing wants you, so this is that state rather than a second drawing of
-    // it. Accent instead of the inherited urgent, because unread mail is not
-    // an emergency.
-    active: root.badge === "Highlight" && root.unread > 0
-    activeColor: Color.accent
-    tooltipText: {
-      if (root.dnd) return root.unread > 0
-        ? "Silenced · " + root.unread + " new" : "Notifications silenced"
-      if (root.unread === 1) return "1 new notification"
-      if (root.unread > 1) return root.unread + " new notifications"
-      return "Notifications"
-    }
-
+    // Right-click silences without opening anything.
     onPressed: function(b) {
-      // Right-click silences without opening anything, because deciding you
-      // want quiet and wanting to read the backlog are opposite impulses.
-      if (b === Qt.RightButton) {
-        root.toggleDnd()
-        return
-      }
-      root.toggle()
+      if (b === Qt.RightButton) root.toggleDnd()
+      else root.toggle()
     }
   }
 
-  // Where the panel hangs from: a zero-width point far past the right edge of
-  // any screen. Invisible, in the layout for nothing, and read only for its
-  // position; see the anchor comment on the panel itself.
-  Item {
-    id: rightAnchor
-    anchors.top: button.top
-    anchors.bottom: button.bottom
-    x: 1000000
-    width: 1
-    visible: false
-  }
-
-  // The Dot marker, drawn over the bell rather than beside it: a bar that
-  // changes width every time a message arrives is a bar that twitches all day.
+  // Something new: a dot over the bell's top right corner, in the theme's
+  // accent (green here). Over rather than beside, so the bar keeps its width.
   Rectangle {
-    id: dot
-    visible: root.badge === "Dot" && root.unread > 0
+    visible: root.unread > 0
     anchors.right: button.right
     anchors.rightMargin: Style.space(3)
     anchors.top: button.top
@@ -354,172 +379,145 @@ Panel {
     color: Color.accent
   }
 
-  Rectangle {
-    id: countBadge
-    visible: root.badge === "Count" && root.unread > 0
-    anchors.right: button.right
-    anchors.rightMargin: Style.space(1)
-    anchors.top: button.top
-    anchors.topMargin: Style.space(3)
-    width: Math.max(countText.implicitWidth + Style.space(6), Style.space(12))
-    height: Style.space(12)
-    radius: height / 2
-    color: Color.accent
-
-    Text {
-      textFormat: Text.PlainText
-      id: countText
-      anchors.centerIn: parent
-      // Past ninety-nine the number has stopped being information and the
-      // badge is only saying "a lot", which it can say in three characters.
-      text: root.unread > 99 ? "99+" : String(root.unread)
-      font.family: root.fontFamily
-      font.pixelSize: Math.max(8, Style.font.caption - Style.space(3))
-      font.bold: true
-      color: Color.background
-    }
-  }
-
   // ------------------------------------------------------------------- panel
 
-  KeyboardPanel {
-    id: popup
-    // Anchored to a point past the right edge of the screen rather than to the
-    // bell. KeyboardPanel clamps its card inside the screen, so an anchor out
-    // there always resolves to hard against the right edge, whatever the bar
-    // has been rearranged into since. This is the one panel in the bar with a
-    // fixed home: a notification center that opened in a different place
-    // depending on how many widgets were to its left would be a notification
-    // center you have to look for.
-    anchorItem: rightAnchor
-    bar: root.bar
-    owner: root
-    open: root.opened
-    focusTarget: keyCatcher
-    contentWidth: popup.fittedContentWidth(Style.space(root.panelWidth))
-    // fittedContentHeight() clamps against availableCardHeight, which collapses
-    // to its 120px minimum under a screen-sized bar window (see
-    // usableCardHeight below), so the same fit is done here against the
-    // corrected ceiling: the content plus the card insets, never taller than
-    // the space the screen actually has.
-    contentHeight: Math.round(Math.min(
-      Math.max(popup.verticalContentInset, content.implicitHeight + popup.verticalContentInset),
-      popup.usableCardHeight))
+  // A modal in the middle of the screen, like the todo list: a click on the
+  // dimmed screen or Esc closes it.
+  PanelWindow {
+    id: modal
+    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
+    visible: root.opened
+    color: Color.menu.scrim
+    exclusionMode: ExclusionMode.Ignore
+    anchors { top: true; bottom: true; left: true; right: true }
+    WlrLayershell.namespace: "notification-center"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-    // The stock omarchy bar window is only as tall as the bar strip, so the
-    // screen minus that window is the space a panel has. Shibumi draws its
-    // strip inside a screen-sized window instead, which makes KeyboardPanel
-    // mistake the whole screen for the bar and collapse to its 120px safety
-    // minimum - a card a few entries tall no matter how much room there is.
-    // Measure the strip itself when the window is screen-sized; both bars
-    // expose barSize, so this works under either host.
-    readonly property real usableCardHeight: {
-      if (barH >= screenH && root.bar && Number(root.bar.barSize) > 0)
-        return Math.max(120, screenH - (Number(root.bar.barSize) + gap + margin))
-      return availableCardHeight
-    }
+    MouseArea { anchors.fill: parent; onClicked: root.close() }
+
+    BorderSurface {
+      id: card
+      anchors.centerIn: parent
+      width: Math.min(Style.space(root.panelWidth), modal.width - Style.space(80))
+      height: Math.min(content.implicitHeight + contentTopInset + contentBottomInset, maxHeight)
+      readonly property real maxHeight: modal.height * 0.85
+      color: Color.popups.background
+      borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
+      padding: Style.spacing.panelPadding
+      radius: Style.cornerRadius
+
+      MouseArea { anchors.fill: parent }   // clicks on the card stay on it
 
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      // While the search field has the focus it owns every key, including the
-      // ones this would otherwise read as navigation.
-      blocked: root.searching
+      anchors.topMargin: card.contentTopInset
+      anchors.rightMargin: card.contentRightInset
+      anchors.bottomMargin: card.contentBottomInset
+      anchors.leftMargin: card.contentLeftInset
+      // The search field has the keyboard and handles its own keys; this
+      // only gets what it leaves.
       onCloseRequested: root.close()
-      onMoveRequested: function(dx, dy) { list.flick(0, dy > 0 ? -900 : 900) }
-      onTabRequested: function(direction) { root.switchPanel(direction) }
-      onTextKey: function(text) {
-        // "/" is the only key that starts a search, because a panel that
-        // started filtering on any keypress would be a panel that swallows
-        // whatever you were typing in the window underneath.
-        if (text === "/") root.startSearch()
-      }
 
       Column {
         id: content
         anchors.fill: parent
-        spacing: Style.space(8)
+        spacing: Style.space(14)
 
         // -------------------------------------------------------- header
 
-        Item {
+        PanelHero {
           id: header
           width: parent.width
-          height: Math.max(title.implicitHeight, actions.height)
-
-          PanelSectionHeader {
-            id: title
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "NOTIFICATIONS"
-            foreground: root.foreground
-            fontFamily: root.fontFamily
+          title: root.settingsOpen ? root.tr("Settings") : root.tr("Notifications")
+          meta: root.settingsOpen ? "" : root.tr("New")
+          foreground: root.foreground
+          fontFamily: root.fontFamily
+          iconComponent: Text {
+            text: root.dnd ? "\uDB80\uDC9B" : "\uDB80\uDC9A"
+            color: root.dnd ? root.silencedColor : root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.display
           }
+          trailingControl: Row {
+            spacing: Style.space(12)
 
-          Row {
-            id: actions
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
-
-            // Search is a button rather than a field standing open. An open
-            // field takes the keyboard the moment the panel appears, and this
-            // panel can be opened from a key binding while you are typing
-            // somewhere else, which is exactly how it ends up eating a
-            // sentence out of the window underneath.
-            PanelActionButton {
-              // Anchored rather than left to the Row, which stacks its
-              // children from the top: an icon button and a text button are
-              // not the same height, and the difference shows as a word
-              // sitting above a row of glyphs.
+            Text {
               anchors.verticalCenter: parent.verticalCenter
-              // U+F0349, nf-md-magnify.
-              iconText: "\uDB80\uDF49"
-              tooltipText: "Search these notifications  ( / )"
-              foreground: root.searching ? Color.accent : root.foreground
-              fontFamily: root.fontFamily
-              visible: root.entries.length > 0
-              onClicked: root.searching ? root.endSearch() : root.startSearch()
+              visible: !root.settingsOpen
+              text: root.freshCount
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.displayLarge
+              font.bold: true
             }
 
-            PanelActionButton {
-              anchors.verticalCenter: parent.verticalCenter
-              iconText: root.dnd ? "\uDB80\uDC9B" : "\uDB80\uDC9A"
-              tooltipText: root.dnd ? "Allow notifications" : "Silence notifications"
-              foreground: root.dnd ? Color.accent : root.foreground
-              fontFamily: root.fontFamily
-              enabled: root.notificationService !== null
-              onClicked: root.toggleDnd()
-            }
-
-            // A word rather than a glyph. The other control in this row
-            // silences and this one empties the panel, and a picture of a
-            // broom is not the place to find out which is which.
             Button {
               anchors.verticalCenter: parent.verticalCenter
-              text: "Clear"
-              tooltipText: "Empty the panel"
+              text: root.tr("Clear")
+              tooltipText: root.tr("Empty the panel")
               foreground: root.foreground
               fontFamily: root.fontFamily
-              fontSize: Style.font.caption
+              bordered: true
               enabled: root.entries.length > 0
               onClicked: root.clearAll()
+            }
+
+            Button {
+              anchors.verticalCenter: parent.verticalCenter
+              // U+F0493, nf-md-cog.
+              iconText: "\uDB81\uDC93"
+              iconSize: Style.font.body
+              tooltipText: root.tr("Settings")
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              selected: root.settingsOpen
+              onClicked: root.toggleSettings()
+            }
+
+            Button {
+              anchors.verticalCenter: parent.verticalCenter
+              iconText: root.dnd ? "\uDB80\uDC9B" : "\uDB80\uDC9A"
+              iconSize: Style.font.body
+              tooltipText: root.dnd ? root.tr("Allow notifications") : root.tr("Silence notifications")
+              foreground: root.dnd ? root.silencedColor : root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: root.toggleDnd()
             }
           }
         }
 
         // -------------------------------------------------------- search
 
+        // Borderless and always holding the keyboard, like the launcher:
+        // typing filters, Up/Down pick a notification, Enter opens it.
         TextField {
           id: search
           width: parent.width
-          visible: root.searching
-          placeholderText: "Search"
+          visible: !root.settingsOpen
+          height: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
+          leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
+          background: null
+          placeholderText: root.tr("Search…")
+          placeholderTextColor: Util.alpha(root.foreground, 0.58)
           foreground: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.heading
+          cursorDelegate: Item {}
           onTextChanged: root.filter = text
-          Keys.onEscapePressed: root.endSearch()
-          Keys.onDownPressed: list.flick(0, -900)
-          Keys.onUpPressed: list.flick(0, 900)
+          onTextEdited: root.cursor = -1
+          Keys.onUpPressed: root.moveCursor(-1)
+          Keys.onDownPressed: root.moveCursor(1)
+          Keys.onReturnPressed: root.activate(root.cursor >= 0 ? rows.get(root.cursor) : null)
+          Keys.onEnterPressed: root.activate(root.cursor >= 0 ? rows.get(root.cursor) : null)
+          Keys.onDeletePressed: function(event) {
+            if (root.cursor < 0) { event.accepted = false; return }
+            root.remove(rows.get(root.cursor).key)
+          }
+          Keys.onEscapePressed: text ? (text = "") : root.close()
         }
 
         // ---------------------------------------------------------- list
@@ -535,16 +533,13 @@ Panel {
           //
           // Search is counted in whether it is showing or not: opening it must
           // not push the footer out through the bottom of the card.
-          readonly property int cap: {
-            if (root.listHeight > 0) return Style.space(root.listHeight)
-            var chrome = header.height + search.implicitHeight + foot.implicitHeight
-                       + content.spacing * 3
-            return Math.max(Style.space(240),
-                            popup.usableCardHeight - popup.verticalContentInset - chrome)
-          }
+          // Grows with what it holds, up to what the card has left once the
+          // header, the search field and the footer have had their share.
+          readonly property int cap: Math.max(Style.space(240), card.maxHeight - card.contentTopInset
+            - card.contentBottomInset - header.height - search.height - foot.implicitHeight - content.spacing * 3)
 
           height: Math.min(contentHeight, cap)
-          visible: rows.count > 0
+          visible: rows.count > 0 && !root.settingsOpen
           clip: true
           model: rows
           spacing: Style.space(6)
@@ -582,6 +577,7 @@ Panel {
           delegate: NotificationRow {
             id: row
             required property var model
+            required property int index
 
             width: list.width - list.lane
             app: model.app
@@ -595,6 +591,8 @@ Panel {
             now: root.now
             urgency: model.urgency
             unread: model.timestamp > root.readMark
+            selected: index === root.cursor
+            tr: root.tr
             showBody: root.showBody
             showPreview: root.showPreview
             foreground: root.foreground
@@ -610,13 +608,13 @@ Panel {
         Text {
           textFormat: Text.PlainText
           width: parent.width
-          visible: rows.count === 0
+          visible: rows.count === 0 && !root.settingsOpen
           horizontalAlignment: Text.AlignHCenter
           topPadding: Style.space(22)
           bottomPadding: Style.space(22)
-          text: !root.loaded ? "Reading the archive\u2026"
-              : root.filter !== "" ? "Nothing matches \u201c" + root.filter + "\u201d"
-              : "Nothing has come in yet"
+          text: !root.loaded ? root.tr("Reading the archive…")
+              : root.filter !== "" ? root.tr("Nothing matches “%1”", root.filter)
+              : root.tr("Nothing has come in yet")
           wrapMode: Text.WordWrap
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
@@ -630,18 +628,95 @@ Panel {
           textFormat: Text.PlainText
           id: foot
           width: parent.width
-          visible: root.entries.length > 0 && root.filter === ""
+          visible: rows.count > 0 && root.filter === "" && !root.settingsOpen
           horizontalAlignment: Text.AlignHCenter
           topPadding: Style.space(2)
-          text: root.entries.length === 1
-            ? "1 notification kept"
-            : root.entries.length + " notifications kept \u00b7 " + root.keepDays + " days"
+          text: root.tr("Shown %1 of %2", rows.count, root.entries.length)
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           color: root.foreground
           opacity: 0.4
         }
+
+        // ------------------------------------------------------ settings
+
+        Column {
+          width: parent.width
+          visible: root.settingsOpen
+          spacing: Style.space(8)
+
+          Toggle {
+            width: parent.width
+            label: root.tr("Only important")
+            description: root.tr("Show only the sources ticked below: messengers, mail, calendar, tasks, reminders")
+            checked: root.onlyImportant
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onClicked: root.saveSetting("onlyImportant", !root.onlyImportant)
+          }
+
+          PanelSectionHeader {
+            visible: root.onlyImportant
+            text: root.tr("SOURCES")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+
+          // Everyone who has sent something, plus the ticked ones yet to.
+          ListView {
+            width: parent.width
+            visible: root.onlyImportant
+            height: Math.min(contentHeight, Style.space(360))
+            clip: true
+            interactive: contentHeight > height
+            boundsBehavior: Flickable.StopAtBounds
+            model: root.settingsOpen ? Model.sources(root.entries, root.important) : []
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+            delegate: CursorSurface {
+              id: sourceRow
+              required property string modelData
+              width: ListView.view.width
+              height: Math.max(Style.space(40), sourceName.implicitHeight + Style.spacing.rowPaddingX)
+              foreground: root.foreground
+              hasCursor: sourceMouse.containsMouse
+
+              Text {
+                id: sourceName
+                textFormat: Text.PlainText
+                anchors.left: parent.left
+                anchors.leftMargin: Style.spacing.rowPaddingX
+                anchors.right: sourceSwitch.left
+                anchors.verticalCenter: parent.verticalCenter
+                elide: Text.ElideRight
+                text: root.sourceLabel(sourceRow.modelData)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                color: root.foreground
+              }
+
+              ToggleSwitch {
+                id: sourceSwitch
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                checked: root.important.indexOf(sourceRow.modelData) >= 0
+                cursorRing: false
+                foreground: root.foreground
+                onToggled: root.toggleSource(sourceRow.modelData)
+              }
+
+              MouseArea {
+                id: sourceMouse
+                anchors.fill: parent
+                anchors.rightMargin: sourceSwitch.width
+                hoverEnabled: true
+                onClicked: root.toggleSource(sourceRow.modelData)
+              }
+            }
+          }
+        }
       }
     }
+  }
   }
 }

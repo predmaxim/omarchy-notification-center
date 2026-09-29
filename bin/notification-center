@@ -666,6 +666,28 @@ backfill_previews() {
   printf '%s' "$filled"
 }
 
+
+# Bring up the app a notification came from. Notifications carry the app's
+# display name ("Telegram Desktop"), which rarely is its window class
+# ("org.telegram.desktop"), so the class is taken from the .desktop file of
+# that name: its id, then StartupWMClass. No window means the app sits in the
+# tray or isn't running, and launching the .desktop brings it up either way.
+# The name is the sender's; the panel lets only name-shaped ones through, and
+# here it is matched as a fixed string.
+cmd_open_app() {
+  local app=$1 desktop id class
+  [[ -n $app ]] || exit 1
+  desktop=$(grep -lixF "Name=$app" \
+    "${XDG_DATA_HOME:-$HOME/.local/share}"/applications/*.desktop /usr/share/applications/*.desktop 2>/dev/null | head -n 1)
+  if [[ -z $desktop ]]; then
+    exec omarchy-hyprland-focus-app "$app"
+  fi
+  id=$(basename -- "$desktop" .desktop)
+  class=$(sed -n 's/^StartupWMClass=//p' "$desktop" | head -n 1)
+  omarchy-hyprland-focus-app "$id" || { [[ -n $class ]] && omarchy-hyprland-focus-app "$class"; } ||
+    exec setsid uwsm-app -- "$id.desktop"
+}
+
 case ${1:-} in
   sync)   shift; quiet=1; cmd_sync; printf '{"ok":true,"synced":true}\n' ;;
   watch)  shift; cmd_watch ;;
@@ -680,6 +702,7 @@ case ${1:-} in
     printf '{"ok":true,"filled":%s}\n' "$(with_lock backfill_previews)"
     ;;
   prune)  shift; ensure_store; with_lock prune; printf '{"ok":true,"pruned":true}\n' ;;
+  open-app) shift; cmd_open_app "${1:-}" ;;
   *)
     cat >&2 <<'USAGE'
 notification-center: the store behind the Omarchy notification center
@@ -694,6 +717,7 @@ notification-center: the store behind the Omarchy notification center
   seed [N]           fill the archive with test traffic
   backfill           give older entries the picture their action points at
   prune              apply the retention limits now
+  open-app NAME      focus the app's window, or start it from its .desktop
 USAGE
     exit 64
     ;;

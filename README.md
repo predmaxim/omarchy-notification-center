@@ -9,6 +9,32 @@ minutes later, in the middle of something else: *what did that say?*
 
 <img src="preview.png" alt="The notification center open on the right of the screen, a column of cards under Today and Yesterday" width="720">
 
+## This fork
+
+[predmaxim](https://github.com/predmaxim)'s fork of
+[jankeesvw/omarchy-notification-center](https://github.com/jankeesvw/omarchy-notification-center):
+
+- **Only important sources** (on by default). A notification's source is the
+  app, or the site for a browser notification (the link the browser puts first
+  in the body), or "Reminders" for a fired `omarchy reminder`. Only ticked
+  sources are shown and counted as new; the archive still keeps everything.
+  Ticked out of the box: messengers, mail, calendar, Jira, reminders
+  (`Model.DEFAULT_IMPORTANT`). The gear in the panel lists every source seen.
+- **A click or Enter goes to the sender**: a site's web app
+  (`omarchy-launch-or-focus-webapp`), Datebook/Jira's own panel, reminders
+  (`omarchy reminder show`), or the app's window, started from its `.desktop`
+  if it has none (`notification-center open-app`).
+- **A modal in the middle of the screen** with a dimmed backdrop, a search
+  field that always holds the keyboard (Up/Down pick, Enter opens, Delete
+  removes, Esc clears then closes), and the Do Not Disturb button last in the
+  header. Silenced, the bell is crossed out and red. DND is read from the
+  notification service's state file and toggled with
+  `omarchy-toggle-notification-silencing`: the shell does not hand its
+  service to third-party plugins.
+- Text in the system language (`I18n.js`, Russian). Kept for 30 days; the
+  badge, list height and keep-days settings are gone.
+- Tests: `node test.js`.
+
 ## Install
 
 ```bash
