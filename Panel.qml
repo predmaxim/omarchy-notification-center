@@ -632,9 +632,10 @@ Panel {
             fontFamily: root.fontFamily
           }
 
+          // Extra room below sets the position apart from the source filter.
           Item {
             width: parent.width
-            height: positions.height
+            height: positions.height + Style.space(12)
 
             ButtonGroup {
               id: positions
@@ -655,7 +656,7 @@ Panel {
             // Shows where the next one lands.
             Button {
               anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
+              anchors.verticalCenter: positions.verticalCenter
               text: root.tr("Test")
               tooltipText: root.tr("Send a test notification")
               foreground: root.foreground
