@@ -52,6 +52,8 @@ Panel {
   // the archive still keeps everything, so ticking one brings its past back.
   readonly property bool onlyImportant: setting("onlyImportant", true)
   readonly property var important: setting("important", Model.DEFAULT_IMPORTANT)
+  // Where the toasts appear; the notifications service reads it from shell.json.
+  readonly property string popupPosition: setting("popupPosition", "top-right")
 
   // Interface text in the system's language (I18n.js).
   readonly property var tr: I18n.translator(I18n.textLanguage(function(name) { return Quickshell.env(name) }))
@@ -632,6 +634,27 @@ Panel {
             foreground: root.foreground
             fontFamily: root.fontFamily
             onClicked: root.saveSetting("onlyImportant", !root.onlyImportant)
+          }
+
+          PanelSectionHeader {
+            text: root.tr("WHERE NOTIFICATIONS APPEAR")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+
+          ButtonGroup {
+            focusable: false
+            value: root.popupPosition
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            options: [
+              { value: "top-left", label: "↖", tooltip: root.tr("Top left") },
+              { value: "top-center", label: "↑", tooltip: root.tr("Top centre") },
+              { value: "top-right", label: "↗", tooltip: root.tr("Top right") },
+              { value: "bottom-left", label: "↙", tooltip: root.tr("Bottom left") },
+              { value: "bottom-right", label: "↘", tooltip: root.tr("Bottom right") }
+            ]
+            onChanged: function(value) { root.saveSetting("popupPosition", value) }
           }
 
           PanelSectionHeader {

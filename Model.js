@@ -56,3 +56,31 @@ function activation(entry, omarchyPath) {
   if (/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(source)) return ["open-app", source]
   return null
 }
+
+// Where the toasts appear. The toasts are drawn by the notifications service
+// (my clone, predmaxim.notifications), which reads the choice from this
+// widget's entry in shell.json.
+var POSITIONS = ["top-left", "top-center", "top-right", "bottom-left", "bottom-right"]
+var ID = "jankeesvw.notification-center"
+
+function popupPosition(shellJson) {
+  var found = ""
+  function walk(node) {
+    if (!node || typeof node !== "object" || found) return
+    if (node.id === ID && POSITIONS.indexOf(node.popupPosition) >= 0) found = node.popupPosition
+    for (var key in node) walk(node[key])
+  }
+  try { walk(JSON.parse(shellJson)) } catch (e) {}
+  return found || "top-right"
+}
+
+// The edges the toast column sticks to and the gap to each screen edge: the
+// edge the bar sits on is kept clear of the bar.
+function popupPlacement(position, barPosition, barClearance, gapsOut) {
+  var parts = String(position).split("-")
+  var margins = {}
+  ;["top", "bottom", "left", "right"].forEach(function(edge) {
+    margins[edge] = edge === barPosition ? barClearance : gapsOut
+  })
+  return { vertical: parts[0], horizontal: parts[1], margins: margins }
+}

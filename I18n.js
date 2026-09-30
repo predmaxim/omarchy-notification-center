@@ -19,7 +19,10 @@ var TABLES = {
     "Only important": "Только важные",
     "Show only the sources ticked below: messengers, mail, calendar, tasks, reminders":
       "Показывать только отмеченные ниже источники: мессенджеры, почту, календарь, задачи, напоминания",
-    "SOURCES": "ИСТОЧНИКИ", "Reminders": "Напоминания"
+    "SOURCES": "ИСТОЧНИКИ", "Reminders": "Напоминания",
+    "WHERE NOTIFICATIONS APPEAR": "ГДЕ ПОКАЗЫВАТЬ УВЕДОМЛЕНИЯ",
+    "Top left": "Сверху слева", "Top centre": "Сверху по центру", "Top right": "Сверху справа",
+    "Bottom left": "Снизу слева", "Bottom right": "Снизу справа"
   }
 }
 
