@@ -4,6 +4,8 @@ import Quickshell
 import qs.Commons
 import qs.Ui
 
+import "../Model.js" as Model
+
 // One notification, as it reads after the fact.
 //
 // Drawn as a card rather than a line in a list, which is the shape macOS
@@ -47,8 +49,10 @@ Item {
 
   readonly property bool hovered: hover.hovered
   // Per-notification media first (an avatar, album art), then the app's own
-  // icon. Both may be missing, and the fallback below covers that.
-  readonly property string iconSource: image !== "" ? resolve(image) : resolve(appIcon)
+  // icon, sent with it or else from its .desktop. Both may be missing, and the
+  // fallback below covers that.
+  readonly property string iconSource: image !== "" ? resolve(image)
+    : resolve(appIcon || Model.desktopIcon(app, DesktopEntries.applications.values))
   readonly property bool hasIcon: iconSource !== "" && icon.status !== Image.Error
   readonly property string initial: app === "" ? "?" : app.charAt(0).toUpperCase()
   readonly property bool hasPreview: showPreview && preview !== "" && previewImage.status !== Image.Error
