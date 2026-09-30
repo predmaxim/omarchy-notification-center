@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, activation, popupPosition, popupPlacement, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -50,6 +50,17 @@ assert.deepStrictEqual(M.popupPlacement("top-center", "top", 40, 10),
   { vertical: "top", horizontal: "center", margins: { top: 40, bottom: 10, left: 10, right: 10 } })
 assert.deepStrictEqual(M.popupPlacement("bottom-left", "left", 40, 10),
   { vertical: "bottom", horizontal: "left", margins: { top: 10, bottom: 10, left: 40, right: 10 } })
+
+// The app's own icon when the notification brought none: its .desktop by name, id or window class
+const apps = [{ name: "Telegram Desktop", id: "org.telegram.desktop", icon: "telegram", startupClass: "org.telegram.desktop.desktop" },
+  { name: "Files", id: "org.gnome.Nautilus", icon: "org.gnome.Nautilus", startupClass: "" },
+  { name: "Blank", id: "blank", icon: "", startupClass: "" }]
+assert.strictEqual(M.desktopIcon("telegram desktop", apps), "telegram")
+assert.strictEqual(M.desktopIcon("org.gnome.Nautilus", apps), "org.gnome.Nautilus")
+assert.strictEqual(M.desktopIcon("org.telegram.desktop.desktop", apps), "telegram")
+assert.strictEqual(M.desktopIcon("Blank", apps), "")
+assert.strictEqual(M.desktopIcon("notify-send", apps), "")
+assert.strictEqual(M.desktopIcon("", apps), "")
 
 // Every tr() in the QML has a Russian line
 const I = new Function(load("I18n.js") + "; return { TABLES }")()

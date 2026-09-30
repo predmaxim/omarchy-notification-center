@@ -84,3 +84,17 @@ function popupPlacement(position, barPosition, barClearance, gapsOut) {
   })
   return { vertical: parts[0], horizontal: parts[1], margins: margins }
 }
+
+// The icon of the app that sent a notification without one: its .desktop,
+// found by name, id or window class the way `notification-center open-app`
+// finds it. entries are Quickshell DesktopEntry objects. "" when none.
+function desktopIcon(app, entries) {
+  var key = String(app || "").toLowerCase()
+  if (key === "") return ""
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i]
+    if ([e.name, e.id, e.startupClass].some(function(v) { return String(v || "").toLowerCase() === key }))
+      return String(e.icon || "")
+  }
+  return ""
+}

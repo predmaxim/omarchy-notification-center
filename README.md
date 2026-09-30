@@ -44,6 +44,9 @@ minutes later, in the middle of something else: *what did that say?*
   toasts are drawn by the shell's notification service, so this only works
   with my clone of it, `predmaxim.notifications`, which a hook in my dotfiles
   builds and which reads the choice through `Model.popupPosition`.
+- **The sender's icon** when a notification brings none: the icon of the app's
+  `.desktop`, found by name, id or window class (`Model.desktopIcon`), in the
+  list and, through the same clone, on the toast. No `.desktop`, no icon.
 - Text in the system language (`I18n.js`, Russian). Kept for 30 days; the
   badge, list height and keep-days settings are gone.
 - Tests: `node test.js`.
