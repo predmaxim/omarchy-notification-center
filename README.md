@@ -38,6 +38,11 @@ minutes later, in the middle of something else: *what did that say?*
   Right-click silences. The widget itself stays in the bar, hidden, for its
   settings and IPC, and writes the count of new important notifications to
   `unread` in the store for the indicator.
+- **Where toasts appear**: a top corner, the top middle or a bottom corner,
+  picked in the gear (`popupPosition` in the widget's `shell.json` entry). The
+  toasts are drawn by the shell's notification service, so this only works
+  with my clone of it, `predmaxim.notifications`, which a hook in my dotfiles
+  builds and which reads the choice through `Model.popupPosition`.
 - Text in the system language (`I18n.js`, Russian). Kept for 30 days; the
   badge, list height and keep-days settings are gone.
 - Tests: `node test.js`.

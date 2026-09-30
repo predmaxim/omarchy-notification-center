@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, activation, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, activation, popupPosition, popupPlacement, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -38,6 +38,18 @@ assert.deepStrictEqual(M.activation({ app: "Telegram Desktop" }, P), ["open-app"
 assert.strictEqual(M.activation({ app: ".*" }, P), null)
 assert.strictEqual(M.activation({ app: "-rf" }, P), null)
 assert.strictEqual(M.activation({ app: "omarchy-action", summary: "Time to recharge!" }, P), null)
+
+// Where toasts appear: read from this widget's entry in shell.json, wherever it sits
+const cfg = pos => JSON.stringify({ bar: { right: [{ id: "x" }], center: [{ id: "jankeesvw.notification-center", popupPosition: pos }] } })
+assert.strictEqual(M.popupPosition(cfg("bottom-left")), "bottom-left")
+assert.strictEqual(M.popupPosition(cfg("middle")), "top-right")
+assert.strictEqual(M.popupPosition(JSON.stringify({ bar: {} })), "top-right")
+assert.strictEqual(M.popupPosition("{broken"), "top-right")
+// Edges the toasts touch; the one the bar sits on is kept clear of it
+assert.deepStrictEqual(M.popupPlacement("top-center", "top", 40, 10),
+  { vertical: "top", horizontal: "center", margins: { top: 40, bottom: 10, left: 10, right: 10 } })
+assert.deepStrictEqual(M.popupPlacement("bottom-left", "left", 40, 10),
+  { vertical: "bottom", horizontal: "left", margins: { top: 10, bottom: 10, left: 40, right: 10 } })
 
 // Every tr() in the QML has a Russian line
 const I = new Function(load("I18n.js") + "; return { TABLES }")()
