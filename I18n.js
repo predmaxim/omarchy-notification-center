@@ -22,7 +22,9 @@ var TABLES = {
     "SOURCES": "ИСТОЧНИКИ", "Reminders": "Напоминания",
     "WHERE NOTIFICATIONS APPEAR": "ГДЕ ПОКАЗЫВАТЬ УВЕДОМЛЕНИЯ",
     "Top left": "Сверху слева", "Top centre": "Сверху по центру", "Top right": "Сверху справа",
-    "Bottom left": "Снизу слева", "Bottom right": "Снизу справа"
+    "Bottom left": "Снизу слева", "Bottom right": "Снизу справа",
+    "Test": "Проверить", "Send a test notification": "Отправить тестовое уведомление",
+    "Test notification": "Тестовое уведомление", "Notifications appear here": "Уведомления появятся здесь"
   }
 }
 

@@ -626,6 +626,46 @@ Panel {
           visible: root.settingsOpen
           spacing: Style.space(8)
 
+          PanelSectionHeader {
+            text: root.tr("WHERE NOTIFICATIONS APPEAR")
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+          }
+
+          Item {
+            width: parent.width
+            height: positions.height
+
+            ButtonGroup {
+              id: positions
+              focusable: false
+              value: root.popupPosition
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              options: [
+                { value: "top-left", label: "↖", tooltip: root.tr("Top left") },
+                { value: "top-center", label: "↑", tooltip: root.tr("Top centre") },
+                { value: "top-right", label: "↗", tooltip: root.tr("Top right") },
+                { value: "bottom-left", label: "↙", tooltip: root.tr("Bottom left") },
+                { value: "bottom-right", label: "↘", tooltip: root.tr("Bottom right") }
+              ]
+              onChanged: function(value) { root.saveSetting("popupPosition", value) }
+            }
+
+            // Shows where the next one lands.
+            Button {
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.tr("Test")
+              tooltipText: root.tr("Send a test notification")
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              bordered: true
+              onClicked: Quickshell.execDetached(["notify-send", "-a", "Notification Center",
+                root.tr("Test notification"), root.tr("Notifications appear here")])
+            }
+          }
+
           Toggle {
             width: parent.width
             label: root.tr("Only important")
@@ -634,27 +674,6 @@ Panel {
             foreground: root.foreground
             fontFamily: root.fontFamily
             onClicked: root.saveSetting("onlyImportant", !root.onlyImportant)
-          }
-
-          PanelSectionHeader {
-            text: root.tr("WHERE NOTIFICATIONS APPEAR")
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-          }
-
-          ButtonGroup {
-            focusable: false
-            value: root.popupPosition
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-            options: [
-              { value: "top-left", label: "↖", tooltip: root.tr("Top left") },
-              { value: "top-center", label: "↑", tooltip: root.tr("Top centre") },
-              { value: "top-right", label: "↗", tooltip: root.tr("Top right") },
-              { value: "bottom-left", label: "↙", tooltip: root.tr("Bottom left") },
-              { value: "bottom-right", label: "↘", tooltip: root.tr("Bottom right") }
-            ]
-            onChanged: function(value) { root.saveSetting("popupPosition", value) }
           }
 
           PanelSectionHeader {
