@@ -48,8 +48,10 @@ function sources(entries, important) {
 // they go out as arguments, never through a shell.
 function activation(entry, omarchyPath) {
   var source = sourceOf(entry)
+  // The pattern is the web app's window class: the bare domain never matches it,
+  // launch-or-focus wraps the pattern in \b and the class goes on with "_" after it.
   if (source !== entry.app && /^[a-z0-9][a-z0-9.-]*$/.test(source))
-    return [omarchyPath + "/bin/omarchy-launch-or-focus-webapp", source, "https://" + source + "/"]
+    return [omarchyPath + "/bin/omarchy-launch-or-focus-webapp", "chrome-" + source + "__-Default", "https://" + source + "/"]
   if (source === "Reminders") return [omarchyPath + "/bin/omarchy-reminder", "show"]
   if (PANELS[source]) return ["omarchy-shell", PANELS[source], "open"]
   if (source === "omarchy-action") return null
