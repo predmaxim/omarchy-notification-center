@@ -42,16 +42,28 @@ function sources(entries, important) {
   return out
 }
 
+// Sites whose notifications belong to another site's web app: Telemost's
+// meeting pages (telemost.yandex.ru) also send the messenger's messages.
+var WEBAPP_OF = { "telemost.yandex.ru": "telemost.360.yandex.ru" }
+
+// A site's notification opens its web app, or null for anything else. The
+// pattern is the app's window class: launch-or-focus wraps it in \b, and in the
+// class the domain goes on with "_", so a bare domain never matches.
+function webApp(entry, omarchyPath) {
+  var source = sourceOf(entry)
+  if (source === String(entry.app || "") || !/^[a-z0-9][a-z0-9.-]*$/.test(source)) return null
+  source = WEBAPP_OF[source] || source
+  return [omarchyPath + "/bin/omarchy-launch-or-focus-webapp", "chrome-" + source + "__-Default", "https://" + source + "/"]
+}
+
 // The command a click runs, as argv, or null. "open-app" is the store
 // script's subcommand: focus the app's window, or start it from its .desktop.
 // Everything here came from the sender, so only name-shaped values pass, and
 // they go out as arguments, never through a shell.
 function activation(entry, omarchyPath) {
+  var site = webApp(entry, omarchyPath)
+  if (site) return site
   var source = sourceOf(entry)
-  // The pattern is the web app's window class: the bare domain never matches it,
-  // launch-or-focus wraps the pattern in \b and the class goes on with "_" after it.
-  if (source !== entry.app && /^[a-z0-9][a-z0-9.-]*$/.test(source))
-    return [omarchyPath + "/bin/omarchy-launch-or-focus-webapp", "chrome-" + source + "__-Default", "https://" + source + "/"]
   if (source === "Reminders") return [omarchyPath + "/bin/omarchy-reminder", "show"]
   if (PANELS[source]) return ["omarchy-shell", PANELS[source], "open"]
   if (source === "omarchy-action") return null

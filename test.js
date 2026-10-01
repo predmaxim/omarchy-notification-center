@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -30,6 +30,10 @@ assert.deepStrictEqual(M.sources([{ app: "Annotate" }, web("vk.com", "x"), { app
 const P = "/omarchy"
 assert.deepStrictEqual(M.activation(web("telemost.360.yandex.ru", "x"), P),
   ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__-Default", "https://telemost.360.yandex.ru/"])
+assert.deepStrictEqual(M.activation(web("telemost.yandex.ru", "x"), P),
+  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__-Default", "https://telemost.360.yandex.ru/"])
+assert.strictEqual(M.webApp({ app: "Datebook" }, P), null)
+assert.strictEqual(M.webApp({ app: "Chromium", body: "no link" }, P), null)
 assert.deepStrictEqual(M.activation({ app: "Datebook" }, P), ["omarchy-shell", "predmaxim.datebook", "open"])
 assert.deepStrictEqual(M.activation({ app: "Jira" }, P), ["omarchy-shell", "predmaxim.jira", "open"])
 assert.deepStrictEqual(M.activation({ app: "omarchy-action", summary: "Reminder" }, P), ["/omarchy/bin/omarchy-reminder", "show"])
