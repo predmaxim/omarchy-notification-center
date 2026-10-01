@@ -26,9 +26,9 @@ BarIndicator {
   inactiveText: "󰂚"
   activeTooltipText: dnd ? root.tr("Notifications silenced") : root.tr("New: %1", unread)
   inactiveTooltipText: root.tr("Notifications")
-  // Not the theme's red: themes set it to anything.
+  // The theme's alert colour (urgent), not its "red": themes set that to anything.
   useActiveColor: dnd
-  activeColor: "#e5534b"
+  activeColor: Color.urgent
 
   onPressed: function(button) {
     if (button === Qt.RightButton)
