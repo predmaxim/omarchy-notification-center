@@ -34,6 +34,9 @@ assert.deepStrictEqual(M.activation(web("telemost.yandex.ru", "x"), P),
   ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__-Default", "https://telemost.360.yandex.ru/"])
 assert.strictEqual(M.webApp({ app: "Datebook" }, P), null)
 assert.strictEqual(M.webApp({ app: "Chromium", body: "no link" }, P), null)
+// A site in another browser is its tab: the click goes to that browser
+assert.deepStrictEqual(M.activation({ app: "Yandex", body: '<a href="https://calendar.360.yandex.ru/">calendar.360.yandex.ru</a>' }, P), ["open-app", "Yandex"])
+assert.deepStrictEqual(M.activation({ app: "Yandex", body: "Яндекс.Погода" }, P), ["open-app", "Yandex"])
 assert.deepStrictEqual(M.activation({ app: "Datebook" }, P), ["omarchy-shell", "predmaxim.datebook", "open"])
 assert.deepStrictEqual(M.activation({ app: "Jira" }, P), ["omarchy-shell", "predmaxim.jira", "open"])
 assert.deepStrictEqual(M.activation({ app: "omarchy-action", summary: "Reminder" }, P), ["/omarchy/bin/omarchy-reminder", "show"])
