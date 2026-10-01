@@ -46,12 +46,16 @@ function sources(entries, important) {
 // meeting pages (telemost.yandex.ru) also send the messenger's messages.
 var WEBAPP_OF = { "telemost.yandex.ru": "telemost.360.yandex.ru" }
 
+// Web apps run in Chromium (omarchy-launch-webapp); a site in another browser
+// is a tab there, and the click goes to that browser's window.
+var WEBAPP_BROWSER = /chrom/i
+
 // A site's notification opens its web app, or null for anything else. The
 // pattern is the app's window class: launch-or-focus wraps it in \b, and in the
 // class the domain goes on with "_", so a bare domain never matches.
 function webApp(entry, omarchyPath) {
   var source = sourceOf(entry)
-  if (source === String(entry.app || "") || !/^[a-z0-9][a-z0-9.-]*$/.test(source)) return null
+  if (!WEBAPP_BROWSER.test(String(entry.app || "")) || source === entry.app || !/^[a-z0-9][a-z0-9.-]*$/.test(source)) return null
   source = WEBAPP_OF[source] || source
   return [omarchyPath + "/bin/omarchy-launch-or-focus-webapp", "chrome-" + source + "__-Default", "https://" + source + "/"]
 }
@@ -63,7 +67,7 @@ function webApp(entry, omarchyPath) {
 function activation(entry, omarchyPath) {
   var site = webApp(entry, omarchyPath)
   if (site) return site
-  var source = sourceOf(entry)
+  var source = BROWSER.test(String(entry.app || "")) ? String(entry.app) : sourceOf(entry)
   if (source === "Reminders") return [omarchyPath + "/bin/omarchy-reminder", "show"]
   if (PANELS[source]) return ["omarchy-shell", PANELS[source], "open"]
   if (source === "omarchy-action") return null

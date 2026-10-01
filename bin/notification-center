@@ -674,17 +674,39 @@ backfill_previews() {
 # tray or isn't running, and launching the .desktop brings it up either way.
 # The name is the sender's; the panel lets only name-shaped ones through, and
 # here it is matched as a fixed string.
+# The window whose class is NAME, or NAME followed by "-" or "." (Yandex is
+# yandex-browser), case aside; agent terminals by their launch-time title, as
+# omarchy-hyprland-focus-app does. Not that script: it takes NAME as a regex
+# anywhere in the class, so "Agent" finds org.omarchy.agent, not Ideco's Agent,
+# and "Yandex" whichever of yandex-browser and a yandex.ru web app comes first.
+window_of() {
+  jq -r --arg n "${1,,}" '
+    def is($v): ($v // "" | ascii_downcase) as $s
+      | $s == $n or ($s | startswith($n + "-")) or ($s | startswith($n + "."));
+    first((.[] | select(is(.class))),
+          (.[] | select(.initialClass == "org.omarchy.agent" and is(.initialTitle)))).address // empty'
+}
+
+focus_window() {
+  local address
+  address=$(hyprctl clients -j 2>/dev/null | window_of "$1")
+  [[ -n $address ]] || return 1
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null 2>&1 ||
+    hyprctl dispatch focuswindow "address:$address" >/dev/null
+}
+
 cmd_open_app() {
   local app=$1 desktop id class
   [[ -n $app ]] || exit 1
   desktop=$(grep -lixF "Name=$app" \
     "${XDG_DATA_HOME:-$HOME/.local/share}"/applications/*.desktop /usr/share/applications/*.desktop 2>/dev/null | head -n 1)
   if [[ -z $desktop ]]; then
-    exec omarchy-hyprland-focus-app "$app"
+    focus_window "$app"
+    exit
   fi
   id=$(basename -- "$desktop" .desktop)
   class=$(sed -n 's/^StartupWMClass=//p' "$desktop" | head -n 1)
-  omarchy-hyprland-focus-app "$id" || { [[ -n $class ]] && omarchy-hyprland-focus-app "$class"; } ||
+  focus_window "$id" || { [[ -n $class ]] && focus_window "$class"; } ||
     exec setsid uwsm-app -- "$id.desktop"
 }
 
