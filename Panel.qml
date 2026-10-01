@@ -106,8 +106,8 @@ Panel {
   }
 
   // Silenced: the bell is crossed out and red, on the bar and in the panel.
-  // Not the theme's red: themes set it to anything (green in the current one).
-  readonly property color silencedColor: "#e5534b"
+  // The theme's alert colour (urgent), not its "red": themes set that to anything.
+  readonly property color silencedColor: Color.urgent
   function toggleDnd() {
     Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-toggle-notification-silencing"])
   }
