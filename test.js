@@ -29,7 +29,7 @@ assert.deepStrictEqual(M.sources([{ app: "Annotate" }, web("vk.com", "x"), { app
 // What a click does
 const P = "/omarchy"
 assert.deepStrictEqual(M.activation(web("telemost.360.yandex.ru", "x"), P),
-  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "telemost.360.yandex.ru", "https://telemost.360.yandex.ru/"])
+  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__-Default", "https://telemost.360.yandex.ru/"])
 assert.deepStrictEqual(M.activation({ app: "Datebook" }, P), ["omarchy-shell", "predmaxim.datebook", "open"])
 assert.deepStrictEqual(M.activation({ app: "Jira" }, P), ["omarchy-shell", "predmaxim.jira", "open"])
 assert.deepStrictEqual(M.activation({ app: "omarchy-action", summary: "Reminder" }, P), ["/omarchy/bin/omarchy-reminder", "show"])
