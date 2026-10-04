@@ -434,39 +434,50 @@ Panel {
               font.bold: true
             }
 
+            // The common header (dotfiles rules.md): icon buttons, square and
+            // borderless, then the on/off switch at the right edge; in the
+            // settings the gear becomes Back and the switch hides.
             Button {
               anchors.verticalCenter: parent.verticalCenter
-              text: root.tr("Clear")
+              visible: !root.settingsOpen
+              // U+F039F, nf-md-notification_clear_all.
+              iconText: "\uDB80\uDF9F"
+              iconSize: Style.font.subtitle * 1.5
+              horizontalPadding: Style.space(5)
+              verticalPadding: Style.space(2)
+              width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+              height: width
               tooltipText: root.tr("Empty the panel")
               foreground: root.foreground
               fontFamily: root.fontFamily
-              bordered: true
               enabled: root.entries.length > 0
               onClicked: root.clearAll()
             }
 
             Button {
               anchors.verticalCenter: parent.verticalCenter
-              // U+F0493, nf-md-cog.
-              iconText: "\uDB81\uDC93"
-              iconSize: Style.font.body
-              tooltipText: root.tr("Settings")
+              // U+F004D nf-md-arrow_left, U+F0493 nf-md-cog.
+              iconText: root.settingsOpen ? "\uDB80\uDC4D" : "\uDB81\uDC93"
+              iconSize: Style.font.subtitle * 1.5
+              horizontalPadding: Style.space(5)
+              verticalPadding: Style.space(2)
+              width: Math.max(implicitWidth, implicitHeight)   // square, like an icon button
+              height: width
+              tooltipText: root.settingsOpen ? root.tr("Back") : root.tr("Settings")
               foreground: root.foreground
               fontFamily: root.fontFamily
-              bordered: true
-              selected: root.settingsOpen
               onClicked: root.toggleSettings()
             }
 
-            Button {
+            // On = notifications shown, off = Do Not Disturb.
+            ToggleSwitch {
+              id: dndSwitch
               anchors.verticalCenter: parent.verticalCenter
-              iconText: root.dnd ? "\uDB80\uDC9B" : "\uDB80\uDC9A"
-              iconSize: Style.font.body
-              tooltipText: root.dnd ? root.tr("Allow notifications") : root.tr("Silence notifications")
-              foreground: root.dnd ? root.silencedColor : root.foreground
-              fontFamily: root.fontFamily
-              bordered: true
-              onClicked: root.toggleDnd()
+              visible: !root.settingsOpen
+              checked: !root.dnd
+              foreground: root.foreground
+              onToggled: root.toggleDnd()
+              PanelToolTip { visible: dndSwitch.containsMouse; text: root.dnd ? root.tr("Allow notifications") : root.tr("Silence notifications") }
             }
           }
         }
