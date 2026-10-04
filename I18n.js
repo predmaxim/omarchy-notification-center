@@ -6,7 +6,7 @@
 var TABLES = {
   ru: {
     // The panel
-    "Notifications": "Уведомления", "New": "Новых", "Settings": "Настройки",
+    "Notifications": "Уведомления", "New": "Новых", "Settings": "Настройки", "Back": "Назад",
     "Search…": "Поиск…", "Clear": "Очистить", "Empty the panel": "Очистить список",
     "Allow notifications": "Включить уведомления", "Silence notifications": "Не беспокоить",
     "Notifications silenced": "Уведомления выключены", "New: %1": "Новых: %1",
