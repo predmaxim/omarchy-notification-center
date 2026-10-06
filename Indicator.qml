@@ -6,8 +6,8 @@ import qs.Ui
 import "@PLUGIN_DIR@/I18n.js" as I18n
 
 // The notification center among the bar's indicators: shown while something
-// new has come in (a green dot on the bell) or notifications are silenced
-// (the bell crossed out, red), otherwise only when the group is hovered.
+// new has come in (the bell in the theme's yellow) or notifications are
+// silenced (the bell crossed out, red), otherwise only when the group is hovered.
 // Click toggles the center (the hidden widget, Panel.qml), right-click
 // silences. The count comes from the file the widget keeps it in, DND from
 // the notification service's state file.
@@ -27,8 +27,10 @@ BarIndicator {
   activeTooltipText: dnd ? root.tr("Notifications silenced") : root.tr("New: %1", unread)
   inactiveTooltipText: root.tr("Notifications")
   // The theme's alert colour (urgent), not its "red": themes set that to anything.
-  useActiveColor: dnd
-  activeColor: Color.urgent
+  useActiveColor: true
+  activeColor: dnd ? Color.urgent : yellow
+  // Color has no yellow role: read it from the palette the way Color does.
+  property color yellow: Color.accent
 
   onPressed: function(button) {
     if (button === Qt.RightButton)
@@ -56,15 +58,21 @@ BarIndicator {
     }
   }
 
-  // Something new: a dot over the bell's top right corner, in the theme's
-  // accent.
-  Rectangle {
-    visible: root.unread > 0 && !root.dnd
-    x: root.width / 2 + root.glyphPaintedWidth / 2 - width / 2
-    y: root.height / 2 - root.glyphPaintedWidth / 2 - height / 2
-    width: Style.space(5)
-    height: width
-    radius: width / 2
-    color: Color.accent
+  FileView {
+    id: palette
+    path: Color.currentThemePath + "/colors.toml"
+    printErrors: false
+    onLoaded: {
+      var m = text().match(/^\s*(?:yellow|color3)\s*=\s*["']?(#[0-9A-Fa-f]{6})/m)
+      root.yellow = m ? m[1] : Color.accent
+    }
+  }
+
+  // omarchy-theme-set swaps the theme folder first, then pushes the new
+  // colours into Color: reread the palette when they change.
+  Connections {
+    target: Color
+    function onAccentChanged() { palette.reload() }
+    function onUrgentChanged() { palette.reload() }
   }
 }
