@@ -462,12 +462,13 @@ cmd_list() {
   # Newest first, because that is the order it is read in. Cleared entries are
   # filtered rather than deleted, so the cut has to happen before the limit:
   # take the newest N of what is still showing, not what is left of the newest
-  # N after the cleared ones are dropped out of it.
+  # N after the cleared ones are dropped out of it. The cut is a slice, not
+  # `head`: head leaves early, the jq feeding it dies of SIGPIPE, pipefail
+  # fails the pipeline and the `||` prints a second array after the first.
   tac "$archive" 2>/dev/null \
     | jq -Rc --argjson cleared "$cleared_at" \
         'fromjson? // empty | select((.timestamp // 0) > $cleared)' 2>/dev/null \
-    | head -n "$limit" \
-    | jq -s '.' 2>/dev/null || printf '[]\n'
+    | jq -s --argjson limit "$limit" '.[:$limit]' 2>/dev/null || printf '[]\n'
 }
 
 remove_key() {
