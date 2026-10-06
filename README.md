@@ -1,8 +1,8 @@
 # Notification Center
 
 An [Omarchy](https://omarchy.org) bar widget that keeps the notifications you
-were sent. A bell on the right of the bar, a dot on it when something has come
-in, and a panel of everything you were told, still there tomorrow.
+were sent. A bell in the bar, yellow in the theme's colours when something has
+come in, and a panel of everything you were told, still there tomorrow.
 
 Omarchy shows a notification once. This answers the question that comes ten
 minutes later, in the middle of something else: *what did that say?*
@@ -33,7 +33,7 @@ minutes later, in the middle of something else: *what did that say?*
   service to third-party plugins.
 - **The bell is an indicator** in the middle of the bar (`Indicator.qml`,
   copied into the `predmaxim.indicators` clone by a hook in my dotfiles):
-  shown while there is something new (a dot) or notifications are silenced
+  shown while there is something new (yellow) or notifications are silenced
   (crossed out, red), otherwise only when the indicator group is hovered.
   Right-click silences. The widget itself stays in the bar, hidden, for its
   settings and IPC, and writes the count of new important notifications to
