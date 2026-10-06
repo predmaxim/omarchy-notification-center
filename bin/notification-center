@@ -430,14 +430,11 @@ cmd_watch() {
   # archived. The same notification arrives twice that way and the second one
   # is dropped by the key check, which is cheaper than trying to be clever
   # about which of the two events to listen for.
-  # Read through a descriptor rather than a pipeline, so the watcher has a pid
-  # this script can kill. Piped into a `while` loop it would be orphaned every
-  # time the shell reloads its plugins, and a day of reloads is a day of stray
-  # inotifywait processes.
-  exec 3< <(inotifywait -m -q -e close_write -e moved_to --format '%w%f' \
-    "$src_dir" "$src_history" 2>/dev/null)
-  watcher=$!
-  trap 'kill "$watcher" 2>/dev/null' EXIT INT TERM
+  # The shell stops this with SIGKILL on a plugin reload, so no trap here ever
+  # runs; the kernel ends inotifywait when this script dies instead. Without it
+  # a day of reloads is a day of stray inotifywait processes.
+  exec 3< <(setpriv --pdeathsig TERM inotifywait -m -q -e close_write -e moved_to \
+    --format '%w%f' "$src_dir" "$src_history" 2>/dev/null)
 
   while IFS= read -r file <&3; do
     [[ $file == *.json ]] || continue
