@@ -49,7 +49,7 @@ minutes later, in the middle of something else: *what did that say?*
   list and, through the same clone, on the toast. No `.desktop`, no icon.
 - Text in the system language (`I18n.js`, Russian). Kept for 30 days; the
   badge, list height and keep-days settings are gone.
-- Tests: `node test.js`, `./test-open-app.sh`.
+- Tests: `node test.js`, `./test-open-app.sh`, `./test-list.sh`.
 
 ## Install
 
