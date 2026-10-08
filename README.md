@@ -23,7 +23,11 @@ minutes later, in the middle of something else: *what did that say?*
 - **A click or Enter goes to the sender**: a site's web app
   (`omarchy-launch-or-focus-webapp`), Datebook/Jira's own panel, reminders
   (`omarchy reminder show`), or the app's window, started from its `.desktop`
-  if it has none (`notification-center open-app`).
+  if it has none (`notification-center open-app`). Telemost goes to the chat
+  itself (`Model.SITE_CLICK`): its web app starts at `/chat`, where the site's
+  service worker finds the window, and the click is passed on to the site
+  through my notifications service clone (`omarchy-shell notifications
+  invokeKey`), which keeps such notifications alive past their toast.
 - **A modal in the middle of the screen** with a dimmed backdrop, a search
   field that always holds the keyboard (Up/Down pick, Enter opens, Delete
   removes, Esc clears then closes), and the Do Not Disturb button last in the
