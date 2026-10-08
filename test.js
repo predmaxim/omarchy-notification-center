@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, siteRow, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -12,6 +12,15 @@ assert.strictEqual(M.messageBody({ app: "Google Chrome", body: '<a href="https:/
 assert.strictEqual(M.messageBody({ app: "Chromium", body: "no link" }), "no link")
 assert.strictEqual(M.messageBody({ app: "Telegram Desktop", body: '<a href="https://x.org/">x.org</a> look' }), '<a href="https://x.org/">x.org</a> look')
 assert.strictEqual(M.messageBody({ app: "Chromium" }), "")
+
+// A site's row: sender (when the site names one first) and the message
+assert.deepStrictEqual(M.siteRow(web("telemost.yandex.ru", ""), "Александр Гончаров: Магия в общем"), { sender: "Александр Гончаров", text: "Магия в общем" })
+assert.deepStrictEqual(M.siteRow(web("telemost.360.yandex.ru", ""), "New message"), { sender: "", text: "New message" })
+assert.deepStrictEqual(M.siteRow(web("telemost.360.yandex.ru", ""), "https://telemost.360.yandex.ru/j/1"), { sender: "", text: "https://telemost.360.yandex.ru/j/1" })
+assert.deepStrictEqual(M.siteRow(web("telemost.360.yandex.ru", ""), "Forwarded message:"), { sender: "", text: "Forwarded message:" })
+assert.deepStrictEqual(M.siteRow(web("web.telegram.org", ""), "Note: buy milk"), { sender: "", text: "Note: buy milk" })
+assert.strictEqual(M.siteRow({ app: "Telegram Desktop", body: "Никита: привет" }, "Никита: привет"), null)
+assert.strictEqual(M.siteRow({ app: "Chromium", body: "no link" }, "no link"), null)
 
 // Where a notification came from
 assert.strictEqual(M.sourceOf(web("telemost.360.yandex.ru", "New message")), "telemost.360.yandex.ru")
