@@ -236,14 +236,16 @@ Item {
           id: appLabel
           anchors.left: parent.left
           width: parent.width - whenLabel.implicitWidth - Style.space(20)
-          // A site's title takes this line, in the title's own look.
+          // A site's title takes this line: quiet like the app's name when the
+          // sender's name follows, in the title's own look when nothing does.
+          readonly property bool loud: !!root.siteRow && root.siteRow.sender === ""
           text: root.siteRow ? root.cleanSummary : root.app
           elide: Text.ElideRight
           font.family: root.fontFamily
-          font.pixelSize: root.siteRow ? Style.font.body : Style.font.caption
-          font.bold: !!root.siteRow
+          font.pixelSize: loud ? Style.font.body : Style.font.caption
+          font.bold: loud
           color: root.foreground
-          opacity: root.siteRow ? 1 : 0.5
+          opacity: loud ? 1 : 0.5
         }
 
         // Swapped for the dismiss button while the pointer is over the card.
