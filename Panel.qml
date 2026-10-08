@@ -318,6 +318,10 @@ Panel {
     var argv = Model.activation(row, root.omarchyPath)
     if (!argv || !root.store) return
     if (argv[0] === "open-app") argv = root.store.storeCommand(argv)
+    // A site that opens the chat itself also gets its own click, while the
+    // notifications service (predmaxim.notifications) still holds the
+    // notification; otherwise this does nothing and the window just opens.
+    if (Model.siteClick(row)) Quickshell.execDetached(["omarchy-shell", "notifications", "invokeKey", row.key])
     Quickshell.execDetached(argv)
     root.close()
   }

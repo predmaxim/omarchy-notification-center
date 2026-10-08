@@ -50,6 +50,11 @@ var WEBAPP_OF = { "telemost.yandex.ru": "telemost.360.yandex.ru" }
 // is a tab there, and the click goes to that browser's window.
 var WEBAPP_BROWSER = /chrom/i
 
+// Web apps that start at a page other than the site's root (the path is also
+// in the window class). Telemost's service worker looks for the messenger
+// window by "/chat" in its address, so it can open the right chat there.
+var WEBAPP_PATH = { "telemost.360.yandex.ru": "chat" }
+
 // A site's notification opens its web app, or null for anything else. The
 // pattern is the app's window class: launch-or-focus wraps it in \b, and in the
 // class the domain goes on with "_", so a bare domain never matches.
@@ -57,7 +62,20 @@ function webApp(entry, omarchyPath) {
   var source = sourceOf(entry)
   if (!WEBAPP_BROWSER.test(String(entry.app || "")) || source === entry.app || !/^[a-z0-9][a-z0-9.-]*$/.test(source)) return null
   source = WEBAPP_OF[source] || source
-  return [omarchyPath + "/bin/omarchy-launch-or-focus-webapp", "chrome-" + source + "__-Default", "https://" + source + "/"]
+  var path = WEBAPP_PATH[source] || ""
+  return [omarchyPath + "/bin/omarchy-launch-or-focus-webapp", "chrome-" + source + "__" + path + "-Default", "https://" + source + "/" + path]
+}
+
+// Sites that open the right chat in their own web app window when Chromium
+// passes the click on to them (its "default" action). Not WEBAPP_OF ones: the
+// click goes to the sending site, which then finds no window of its own and
+// opens a plain browser window.
+var SITE_CLICK = ["telemost.360.yandex.ru"]
+
+// The web app window such a site's click needs, or "" for any other sender.
+function siteClick(entry) {
+  var app = webApp(entry, "")
+  return app && SITE_CLICK.indexOf(sourceOf(entry)) >= 0 ? app[1] : ""
 }
 
 // The command a click runs, as argv, or null. "open-app" is the store

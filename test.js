@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -28,10 +28,19 @@ assert.deepStrictEqual(M.sources([{ app: "Annotate" }, web("vk.com", "x"), { app
 
 // What a click does
 const P = "/omarchy"
+// Telemost's web app starts at /chat: its service worker finds the window there
 assert.deepStrictEqual(M.activation(web("telemost.360.yandex.ru", "x"), P),
-  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__-Default", "https://telemost.360.yandex.ru/"])
+  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__chat-Default", "https://telemost.360.yandex.ru/chat"])
 assert.deepStrictEqual(M.activation(web("telemost.yandex.ru", "x"), P),
-  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__-Default", "https://telemost.360.yandex.ru/"])
+  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-telemost.360.yandex.ru__chat-Default", "https://telemost.360.yandex.ru/chat"])
+assert.deepStrictEqual(M.webApp(web("web.telegram.org", "x"), P),
+  ["/omarchy/bin/omarchy-launch-or-focus-webapp", "chrome-web.telegram.org__-Default", "https://web.telegram.org/"])
+// A site that opens the chat itself: the window its click needs, else ""
+assert.strictEqual(M.siteClick(web("telemost.360.yandex.ru", "x")), "chrome-telemost.360.yandex.ru__chat-Default")
+assert.strictEqual(M.siteClick(web("telemost.yandex.ru", "x")), "")
+assert.strictEqual(M.siteClick(web("web.telegram.org", "x")), "")
+assert.strictEqual(M.siteClick({ app: "Firefox", body: '<a href="https://telemost.360.yandex.ru/">x</a>' }), "")
+assert.strictEqual(M.siteClick({ app: "Telegram Desktop" }), "")
 assert.strictEqual(M.webApp({ app: "Datebook" }, P), null)
 assert.strictEqual(M.webApp({ app: "Chromium", body: "no link" }, P), null)
 // A site in another browser is its tab: the click goes to that browser
