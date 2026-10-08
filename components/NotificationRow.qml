@@ -82,6 +82,12 @@ Item {
     .replace(/\s+/g, " ")
     .trim()
 
+  // A site's notification: title on top, then the sender, then the message
+  // (Model.siteRow). null for an app's: its name stays above the title.
+  readonly property var siteRow: Model.siteRow({ app: app, body: body }, cleanBody)
+  readonly property string secondLine: siteRow ? siteRow.sender : cleanSummary
+  readonly property string message: siteRow ? siteRow.text : cleanBody
+
   // Recent things get a duration, older things get a clock. "4m ago" is how
   // you think about something that just happened; "16:04" is how you think
   // about something from this morning, and the day it happened on is already
@@ -230,12 +236,14 @@ Item {
           id: appLabel
           anchors.left: parent.left
           width: parent.width - whenLabel.implicitWidth - Style.space(20)
-          text: root.app
+          // A site's title takes this line, in the title's own look.
+          text: root.siteRow ? root.cleanSummary : root.app
           elide: Text.ElideRight
           font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+          font.pixelSize: root.siteRow ? Style.font.body : Style.font.caption
+          font.bold: !!root.siteRow
           color: root.foreground
-          opacity: 0.5
+          opacity: root.siteRow ? 1 : 0.5
         }
 
         // Swapped for the dismiss button while the pointer is over the card.
@@ -245,6 +253,7 @@ Item {
           textFormat: Text.PlainText
           id: whenLabel
           anchors.right: parent.right
+          anchors.baseline: appLabel.baseline
           visible: !root.hovered
           text: root.when
           font.family: root.fontFamily
@@ -292,8 +301,8 @@ Item {
       Text {
         textFormat: Text.PlainText
         width: parent.width
-        visible: root.summary !== ""
-        text: root.cleanSummary
+        visible: root.secondLine !== ""
+        text: root.secondLine
         elide: Text.ElideRight
         maximumLineCount: 1
         font.family: root.fontFamily
@@ -308,8 +317,8 @@ Item {
       Text {
         textFormat: Text.PlainText
         width: parent.width
-        visible: root.showBody && root.cleanBody !== ""
-        text: root.cleanBody
+        visible: root.showBody && root.message !== ""
+        text: root.message
         wrapMode: Text.WordWrap
         elide: Text.ElideRight
         maximumLineCount: 2

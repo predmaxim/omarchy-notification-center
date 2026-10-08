@@ -36,6 +36,20 @@ function messageBody(entry) {
   return BROWSER.test(String(entry.app || "")) ? body.replace(/^\s*<a\b[^>]*>[^<]*<\/a>\s*/i, "") : body
 }
 
+// Sites that put the sender first in the message: "Имя: текст".
+var SENDER_FIRST = ["telemost.360.yandex.ru", "telemost.yandex.ru"]
+
+// A site's row has the title on top (the browser's name says nothing), then
+// the sender when the site names one, then the message without that name.
+// text is the message as the row shows it. null for an app's notification,
+// whose row keeps the app's name above the title.
+function siteRow(entry, text) {
+  var app = String(entry.app || ""), source = sourceOf(entry)
+  if (!BROWSER.test(app) || source === app) return null
+  var named = SENDER_FIRST.indexOf(source) >= 0 ? /^([^:]{1,64}): (.+)$/.exec(text) : null
+  return named ? { sender: named[1], text: named[2] } : { sender: "", text: text }
+}
+
 function isImportant(entry, important) {
   return important.indexOf(sourceOf(entry)) >= 0
 }
