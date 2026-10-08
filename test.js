@@ -2,9 +2,16 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
+
+// A browser's message without the site link it puts first
+assert.strictEqual(M.messageBody(web("telemost.360.yandex.ru", "New message")), "New message")
+assert.strictEqual(M.messageBody({ app: "Google Chrome", body: '<a href="https://web.telegram.org/k/">web.telegram.org</a>\n\nПривет' }), "Привет")
+assert.strictEqual(M.messageBody({ app: "Chromium", body: "no link" }), "no link")
+assert.strictEqual(M.messageBody({ app: "Telegram Desktop", body: '<a href="https://x.org/">x.org</a> look' }), '<a href="https://x.org/">x.org</a> look')
+assert.strictEqual(M.messageBody({ app: "Chromium" }), "")
 
 // Where a notification came from
 assert.strictEqual(M.sourceOf(web("telemost.360.yandex.ru", "New message")), "telemost.360.yandex.ru")
