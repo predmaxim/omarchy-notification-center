@@ -60,8 +60,9 @@ Item {
   // The body arrives as notification markup: a subset of HTML, plus whatever
   // the sender felt like putting in. Images are stripped rather than rendered,
   // because one <img> would set the height of the card to the height of the
-  // image.
-  readonly property string cleanBody: String(body || "")
+  // image. A browser's site link goes first (Model.messageBody): the source
+  // already names the site.
+  readonly property string cleanBody: Model.messageBody({ app: app, body: body })
     .replace(/<img[^>]*>/gi, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")

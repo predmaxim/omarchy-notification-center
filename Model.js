@@ -29,6 +29,13 @@ function sourceOf(entry) {
   return app
 }
 
+// The message itself: a browser's body without the site link it puts first,
+// as the toast shows it (the stock service drops that link too).
+function messageBody(entry) {
+  var body = String(entry.body || "")
+  return BROWSER.test(String(entry.app || "")) ? body.replace(/^\s*<a\b[^>]*>[^<]*<\/a>\s*/i, "") : body
+}
+
 function isImportant(entry, important) {
   return important.indexOf(sourceOf(entry)) >= 0
 }
