@@ -183,11 +183,13 @@ Panel {
     var count = 0
     for (var i = 0; i < entries.length; i++) {
       if (entries[i].timestamp <= mark) break
-      if (passes(entries[i])) count++
+      if (passes(entries[i]) && !readKeys[entries[i].key]) count++
     }
     return count
   }
   readonly property double lastSeen: store ? store.lastSeen : 0
+  // Clicked on their toast: read without the center being opened.
+  readonly property var readKeys: store ? store.readKeys : ({})
 
   Timer {
     interval: 30000
@@ -586,7 +588,7 @@ Panel {
             timestamp: model.timestamp
             now: root.now
             urgency: model.urgency
-            unread: model.timestamp > root.readMark
+            unread: model.timestamp > root.readMark && !root.readKeys[model.key]
             selected: index === root.cursor
             tr: root.tr
             showBody: root.showBody
