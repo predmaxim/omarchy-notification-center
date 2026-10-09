@@ -38,6 +38,8 @@ store=${NC_STORE:-$state_home/omarchy-notification-center}
 archive="$store/archive.jsonl"
 images="$store/images"
 seen_file="$store/seen"
+# Keys clicked on their toast: read without opening the center.
+read_file="$store/read"
 lock_file="$store/lock"
 dismissed_file="$store/dismissed"
 cleared_at_file="$store/cleared_at"
@@ -78,7 +80,7 @@ ensure_store() {
   # machine with a second account hands over every notification you have had
   # for the reading. Cheap enough to reassert on every call.
   chmod 700 "$store" "$images" 2>/dev/null || true
-  chmod 600 "$archive" "$dismissed_file" "$seen_file" "$cleared_at_file" 2>/dev/null || true
+  chmod 600 "$archive" "$dismissed_file" "$seen_file" "$read_file" "$cleared_at_file" 2>/dev/null || true
 }
 
 now_ms() { printf '%s' "$(($(date +%s%N) / 1000000))"; }
@@ -522,12 +524,25 @@ cmd_seen() {
   printf '{"ok":true,"seen":%s}\n' "$(cat "$seen_file" 2>/dev/null || echo 0)"
 }
 
+# A toast that was clicked was read, though the center was never opened.
+cmd_read() {
+  ensure_store
+  [[ ${1:-} =~ ^[0-9]+-[0-9]+$ ]] || die "read needs a key"
+  printf '%s\n' "$1" >> "$read_file"
+  # Newer than the last opening of the center only matters for so long.
+  tail -n 500 "$read_file" > "$read_file.tmp" && mv -f "$read_file.tmp" "$read_file"
+  printf '{"ok":true,"read":"%s"}\n' "$1"
+}
+
 cmd_unread() {
   ensure_store
   local seen
   seen=$(cat "$seen_file" 2>/dev/null || echo 0)
+  [[ -f $read_file ]] || : > "$read_file"
   printf '{"ok":true,"unread":%s}\n' \
-    "$(jq -s --argjson seen "${seen:-0}" '[.[] | select(.timestamp > $seen)] | length' "$archive" 2>/dev/null || echo 0)"
+    "$(jq -s --argjson seen "${seen:-0}" --rawfile read "$read_file" \
+      '($read | split("\n")) as $r | [.[] | select(.timestamp > $seen and (.key | IN($r[]) | not))] | length' \
+      "$archive" 2>/dev/null || echo 0)"
 }
 
 # Fills the archive with plausible-looking traffic, for working on the panel
@@ -715,6 +730,7 @@ case ${1:-} in
   remove) shift; cmd_remove "${1:-}" ;;
   clear)  shift; cmd_clear ;;
   seen)   shift; cmd_seen "$@" ;;
+  read)   shift; cmd_read "${1:-}" ;;
   unread) shift; cmd_unread ;;
   seed)   shift; cmd_seed "${1:-25}" ;;
   backfill)
@@ -733,7 +749,8 @@ notification-center: the store behind the Omarchy notification center
   remove KEY         drop one notification
   clear              drop all of them
   seen [MS]          read or set when the center was last opened
-  unread             how many arrived since then
+  read KEY           mark one read (its toast was clicked)
+  unread             how many arrived since then and were not read
   seed [N]           fill the archive with test traffic
   backfill           give older entries the picture their action points at
   prune              apply the retention limits now

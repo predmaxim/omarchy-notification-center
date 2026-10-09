@@ -28,6 +28,9 @@ Item {
 
   property var entries: []
   property double lastSeen: 0
+  // Keys clicked on their toast (`notification-center read`): read, though
+  // newer than lastSeen. The toast service writes the file; this follows it.
+  property var readKeys: ({})
   property bool loaded: false
 
   readonly property bool watching: watchProc.running
@@ -35,8 +38,8 @@ Item {
   readonly property int unread: {
     var count = 0
     for (var i = 0; i < entries.length; i++) {
-      if (entries[i].timestamp > lastSeen) count++
-      else break
+      if (entries[i].timestamp <= lastSeen) break
+      if (!readKeys[entries[i].key]) count++
     }
     return count
   }
@@ -181,6 +184,18 @@ Item {
   }
 
   Process { id: markProc; environment: root.storeEnvironment }
+
+  FileView {
+    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy-notification-center/read"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      var keys = {}
+      text().split("\n").forEach(function(k) { if (k) keys[k] = true })
+      root.readKeys = keys
+    }
+  }
 
   Component.onCompleted: {
     readSeen()
