@@ -14,6 +14,8 @@ minutes later, in the middle of something else: *what did that say?*
 [predmaxim](https://github.com/predmaxim)'s fork of
 [jankeesvw/omarchy-notification-center](https://github.com/jankeesvw/omarchy-notification-center):
 
+<img src="preview-fork.png" alt="The fork's centred notification center: a search field, cards grouped by day, unread dots" width="420">
+
 - **Only important sources** (on by default). A notification's source is the
   app, or the site for a browser notification (the link the browser puts first
   in the body), or "Reminders" for a fired `omarchy reminder`. Only ticked
