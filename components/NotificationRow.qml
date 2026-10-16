@@ -127,7 +127,7 @@ Item {
                    root.hovered || root.selected ? 0.11 : 0.06)
     radius: Style.space(12)
 
-    Behavior on color { ColorAnimation { duration: 90 } }
+    Behavior on color { ColorAnimation { duration: 60 } }
 
     // Critical notifications keep the one piece of colour on the card: a bar
     // down the leading edge. Everything else on it is grey, so this reads from
