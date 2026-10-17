@@ -94,6 +94,8 @@ Item {
     entries = next
     entriesReset()
     Quickshell.execDetached(root.storeCommand(["remove", String(key)]))
+    // Closed at its sender too, if the notifications service still holds it.
+    Quickshell.execDetached(["omarchy-shell", "-q", "notifications", "dismissKey", String(key)])
   }
 
   // Detached, like remove and seed above it: a clear that arrives while the
@@ -103,6 +105,8 @@ Item {
     entries = []
     entriesReset()
     Quickshell.execDetached(root.storeCommand(["clear"]))
+    // And every notification the notifications service still holds closes at its sender.
+    Quickshell.execDetached(["omarchy-shell", "-q", "notifications", "dismissEverything"])
   }
 
   function absorb(line) {

@@ -99,6 +99,17 @@ function siteClick(entry) {
   return app && SITE_CLICK.indexOf(sourceOf(entry)) >= 0 ? app[1] : ""
 }
 
+// The notifications service (my clone, predmaxim.notifications) keeps a
+// notification with its sender when the toast expires, as GNOME and KDE do, so
+// a click here still reaches the sender; at most this many. ids are the kept
+// ones, as strings; out come the ids to close, oldest (lowest: the server
+// counts up) first.
+var KEEP_ALIVE = 100
+
+function keptToClose(ids) {
+  return ids.map(Number).sort(function(a, b) { return a - b }).slice(0, Math.max(0, ids.length - KEEP_ALIVE))
+}
+
 // The command a click runs, as argv, or null. "open-app" is the store
 // script's subcommand: focus the app's window, or start it from its .desktop.
 // Everything here came from the sender, so only name-shaped values pass, and

@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, siteRow, activation, popupPosition, popupPlacement, desktopIcon, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, siteRow, activation, popupPosition, popupPlacement, desktopIcon, keptToClose, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -82,6 +82,12 @@ assert.deepStrictEqual(M.popupPlacement("top-center", "top", 40, 10),
   { vertical: "top", horizontal: "center", margins: { top: 40, bottom: 10, left: 10, right: 10 } })
 assert.deepStrictEqual(M.popupPlacement("bottom-left", "left", 40, 10),
   { vertical: "bottom", horizontal: "left", margins: { top: 10, bottom: 10, left: 40, right: 10 } })
+
+// Notifications kept with their senders past the toast: at most 100, the oldest (lowest id) close first
+const ids = n => Array.from({ length: n }, (_, i) => String(n - i))
+assert.deepStrictEqual(M.keptToClose(ids(100)), [])
+assert.deepStrictEqual(M.keptToClose(ids(103)), [1, 2, 3])
+assert.deepStrictEqual(M.keptToClose([]), [])
 
 // The app's own icon when the notification brought none: its .desktop by name, id or window class
 const apps = [{ name: "Telegram Desktop", id: "org.telegram.desktop", icon: "telegram", startupClass: "org.telegram.desktop.desktop" },

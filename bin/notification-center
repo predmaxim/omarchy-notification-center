@@ -723,6 +723,22 @@ cmd_open_app() {
     exec setsid uwsm-app -- "$id.desktop"
 }
 
+# A click in the center, as on the toast: the sender's own click (its "default"
+# action) while the notifications service still holds the notification (my
+# clone, predmaxim.notifications: invokeKey answers "ok"); otherwise the
+# center's own command (Model.activation; open-app is this script's).
+cmd_click() {
+  local key=${1:-}
+  (( $# )) && shift
+  if [[ $key =~ ^[0-9]+-[0-9]+$ && $(omarchy-shell notifications invokeKey "$key" 2>/dev/null) == ok ]]; then
+    return 0
+  elif [[ ${1:-} == open-app ]]; then
+    cmd_open_app "${2:-}"
+  elif (( $# )); then
+    exec "$@"
+  fi
+}
+
 case ${1:-} in
   sync)   shift; quiet=1; cmd_sync; printf '{"ok":true,"synced":true}\n' ;;
   watch)  shift; cmd_watch ;;
@@ -739,6 +755,7 @@ case ${1:-} in
     ;;
   prune)  shift; ensure_store; with_lock prune; printf '{"ok":true,"pruned":true}\n' ;;
   open-app) shift; cmd_open_app "${1:-}" ;;
+  click)  shift; cmd_click "$@" ;;
   *)
     cat >&2 <<'USAGE'
 notification-center: the store behind the Omarchy notification center
@@ -755,6 +772,8 @@ notification-center: the store behind the Omarchy notification center
   backfill           give older entries the picture their action points at
   prune              apply the retention limits now
   open-app NAME      focus the app's window, or start it from its .desktop
+  click KEY [CMD]    the sender's own click while the notifications service
+                     holds the notification, else CMD (open-app NAME or argv)
 USAGE
     exit 64
     ;;

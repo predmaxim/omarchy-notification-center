@@ -318,13 +318,18 @@ Panel {
     // panel, or the app's window (started if it has none). Model.activation
     // only lets name-shaped values through, as arguments.
     var argv = Model.activation(row, root.omarchyPath)
-    if (!argv || !root.store) return
-    if (argv[0] === "open-app") argv = root.store.storeCommand(argv)
-    // A site that opens the chat itself also gets its own click, while the
-    // notifications service (predmaxim.notifications) still holds the
-    // notification; otherwise this does nothing and the window just opens.
-    if (Model.siteClick(row)) Quickshell.execDetached(["omarchy-shell", "notifications", "invokeKey", row.key])
-    Quickshell.execDetached(argv)
+    if (!root.store) return
+    if (Model.webApp(row, root.omarchyPath)) {
+      // A site, as on its toast: its web app opens; a site that opens the chat
+      // itself also gets its own click, while the notifications service
+      // (predmaxim.notifications) still holds the notification.
+      if (Model.siteClick(row)) Quickshell.execDetached(["omarchy-shell", "notifications", "invokeKey", row.key])
+      Quickshell.execDetached(argv)
+    } else {
+      // Anything else, as on its toast: the sender's own click while the
+      // service still holds the notification, else argv (the store's click).
+      Quickshell.execDetached(root.store.storeCommand(["click", String(row.key)].concat(argv || [])))
+    }
     root.close()
   }
 
