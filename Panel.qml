@@ -253,6 +253,7 @@ Panel {
     return {
       key: String(entry.key || ""),
       app: String(entry.app || ""),
+      desktopEntry: String(entry.desktopEntry || ""),
       appIcon: String(entry.appIcon || ""),
       summary: String(entry.summary || ""),
       body: String(entry.body || ""),

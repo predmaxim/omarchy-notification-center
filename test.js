@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, siteRow, activation, popupPosition, popupPlacement, desktopIcon, keptToClose, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, siteRow, activation, popupPosition, popupPlacement, desktopIcon, keptToClose, liveId, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -66,6 +66,13 @@ assert.deepStrictEqual(M.activation({ app: "Datebook" }, P), ["omarchy-shell", "
 assert.deepStrictEqual(M.activation({ app: "Jira" }, P), ["omarchy-shell", "predmaxim.jira", "open"])
 assert.deepStrictEqual(M.activation({ app: "omarchy-action", summary: "Reminder" }, P), ["/omarchy/bin/omarchy-reminder", "show"])
 assert.deepStrictEqual(M.activation({ app: "Telegram Desktop" }, P), ["open-app", "Telegram Desktop"])
+// The sender's desktop-entry first (its .desktop: window by StartupWMClass, else launch); a name
+// that is no name (Почта) no longer stops it, and an entry that is no id is ignored
+assert.deepStrictEqual(M.activation({ app: "Почта", desktopEntry: "omarchy-mail" }, P), ["open-app", "", "omarchy-mail"])
+assert.deepStrictEqual(M.activation({ app: "Mail", desktopEntry: "omarchy-mail" }, P), ["open-app", "Mail", "omarchy-mail"])
+assert.deepStrictEqual(M.activation({ app: "Telegram Desktop", desktopEntry: "../../tmp/x" }, P), ["open-app", "Telegram Desktop"])
+assert.deepStrictEqual(M.activation({ app: "Datebook", desktopEntry: "datebook" }, P), ["omarchy-shell", "predmaxim.datebook", "open"])
+assert.strictEqual(M.activation({ app: "Почта" }, P), null)
 // The app name is the sender's to choose: nothing regex- or option-shaped gets through
 assert.strictEqual(M.activation({ app: ".*" }, P), null)
 assert.strictEqual(M.activation({ app: "-rf" }, P), null)
@@ -83,11 +90,19 @@ assert.deepStrictEqual(M.popupPlacement("top-center", "top", 40, 10),
 assert.deepStrictEqual(M.popupPlacement("bottom-left", "left", 40, 10),
   { vertical: "bottom", horizontal: "left", margins: { top: 10, bottom: 10, left: 40, right: 10 } })
 
-// Notifications kept with their senders past the toast: at most 100, the oldest (lowest id) close first
-const ids = n => Array.from({ length: n }, (_, i) => String(n - i))
-assert.deepStrictEqual(M.keptToClose(ids(100)), [])
-assert.deepStrictEqual(M.keptToClose(ids(103)), [1, 2, 3])
-assert.deepStrictEqual(M.keptToClose([]), [])
+// Notifications kept with their senders past the toast (id -> when last shown): at most 100, the least recently shown close first
+const kept = (n, shown) => Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), shown(i + 1)]))
+assert.deepStrictEqual(M.keptToClose(kept(100, id => id)), [])
+assert.deepStrictEqual(M.keptToClose(kept(103, id => 2000 - id)), [103, 102, 101])
+assert.deepStrictEqual(M.keptToClose(kept(103, id => id === 1 ? 9000 : 1000 + id)), [2, 3, 4])  // 1 re-shown last
+assert.deepStrictEqual(M.keptToClose({}), [])
+// A center key (<time>-<id>) names a held notification only as last shown: an older message
+// under the same id (replaced since) and a key from before a restart name nothing
+assert.strictEqual(M.liveId("1700-7", { 7: 1700 }), 7)
+assert.strictEqual(M.liveId("1600-7", { 7: 1700 }), -1)
+assert.strictEqual(M.liveId("1700-8", { 7: 1700 }), -1)
+assert.strictEqual(M.liveId("bad", { 7: 1700 }), -1)
+assert.strictEqual(M.liveId(undefined, {}), -1)
 
 // The app's own icon when the notification brought none: its .desktop by name, id or window class
 const apps = [{ name: "Telegram Desktop", id: "org.telegram.desktop", icon: "telegram", startupClass: "org.telegram.desktop.desktop" },

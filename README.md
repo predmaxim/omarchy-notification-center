@@ -25,19 +25,25 @@ minutes later, in the middle of something else: *what did that say?*
 - **A click or Enter is the toast's click.** My notifications service clone
   (`predmaxim.notifications`, built by a hook in my dotfiles) keeps a
   notification with its sender when the toast expires, as GNOME and KDE do (up
-  to `Model.KEEP_ALIVE`, 100; the oldest close). While it is held, a click here
-  is the sender's own (its `default` action: mail opens the letter, Telegram
-  the chat) through `omarchy-shell notifications invokeKey`
-  (`notification-center click`). Once it is gone (the shell restarted, the
-  sender closed it), the click goes to the sender: a site's web app
-  (`omarchy-launch-or-focus-webapp`), Datebook/Jira's own panel, reminders
-  (`omarchy reminder show`), or the app's window, started from its `.desktop`
-  if it has none (`notification-center open-app`). A site keeps its toast's
-  rules: its web app opens, and only Telemost gets the site's own click
-  (`Model.SITE_CLICK`): its web app starts at `/chat`, where the site's
-  service worker finds the window and opens the chat itself. Removing a
-  notification here, or Clear, closes it at the sender too (`dismissKey`,
-  `dismissEverything`).
+  to `Model.KEEP_ALIVE`, 100; the least recently shown close first). While it
+  is held, a click here is the sender's own (its `default` action: mail opens
+  the letter, Telegram the chat) through `omarchy-shell notifications
+  invokeKey` (`notification-center click`), and the click closes it, as on the
+  toast. The key must name the notification as last shown: a row for an older
+  message the sender has replaced under the same id, or one from before a
+  shell restart, is not the sender's any more. Without a held notification or
+  without a `default` action (Datebook, Jira), the click goes to the sender: a
+  site's web app (`omarchy-launch-or-focus-webapp`), Datebook/Jira's own
+  panel, reminders (`omarchy reminder show`), or the app's `.desktop` (the
+  sender's `desktop-entry` first, then the one named like the app): its window
+  by id or `StartupWMClass`, started if it has none (`notification-center
+  open-app`). A sender that quit without closing its notifications leaves them
+  held, and a click on one reaches nobody (the server does not watch who sent
+  it). A site keeps its toast's rules: its web app opens, and only Telemost
+  gets the site's own click (`Model.SITE_CLICK`): its web app starts at
+  `/chat`, where the site's service worker finds the window and opens the chat
+  itself. Removing a notification here, or Clear, closes it at the sender too
+  (`dismissKey`, `dismissEverything`).
 - **A modal in the middle of the screen** with a dimmed backdrop, a search
   field that always holds the keyboard (Up/Down pick, Enter opens, Delete
   removes, Esc clears then closes), and the Do Not Disturb button last in the

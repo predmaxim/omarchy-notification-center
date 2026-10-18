@@ -101,17 +101,28 @@ function siteClick(entry) {
 
 // The notifications service (my clone, predmaxim.notifications) keeps a
 // notification with its sender when the toast expires, as GNOME and KDE do, so
-// a click here still reaches the sender; at most this many. ids are the kept
-// ones, as strings; out come the ids to close, oldest (lowest: the server
-// counts up) first.
+// a click here still reaches the sender; at most this many. kept maps each
+// kept id to when it was last shown; out come the ids to close, least recently
+// shown first.
 var KEEP_ALIVE = 100
 
-function keptToClose(ids) {
-  return ids.map(Number).sort(function(a, b) { return a - b }).slice(0, Math.max(0, ids.length - KEEP_ALIVE))
+function keptToClose(kept) {
+  var ids = Object.keys(kept).sort(function(a, b) { return kept[a] - kept[b] })
+  return ids.slice(0, Math.max(0, ids.length - KEEP_ALIVE)).map(Number)
+}
+
+// The id a center key (<time>-<id>, the toast's file name) names while that
+// service holds the notification, or -1. shownAt maps each held id to when it
+// was last shown: an older key under the same id is a message the sender has
+// replaced since, and a key from before a restart is another server's.
+function liveId(key, shownAt) {
+  var m = /^(\d+)-(\d+)$/.exec(String(key || ""))
+  return m && shownAt[m[2]] === Number(m[1]) ? Number(m[2]) : -1
 }
 
 // The command a click runs, as argv, or null. "open-app" is the store
-// script's subcommand: focus the app's window, or start it from its .desktop.
+// script's subcommand: focus the app's window, or start it from its .desktop,
+// the sender's desktop-entry first (the name can be anything: «Почта»).
 // Everything here came from the sender, so only name-shaped values pass, and
 // they go out as arguments, never through a shell.
 function activation(entry, omarchyPath) {
@@ -121,8 +132,10 @@ function activation(entry, omarchyPath) {
   if (source === "Reminders") return [omarchyPath + "/bin/omarchy-reminder", "show"]
   if (PANELS[source]) return ["omarchy-shell", PANELS[source], "open"]
   if (source === "omarchy-action") return null
-  if (/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(source)) return ["open-app", source]
-  return null
+  var name = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(source) ? source : ""
+  var desktop = String(entry.desktopEntry || "")
+  if (/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(desktop)) return ["open-app", name, desktop]
+  return name ? ["open-app", name] : null
 }
 
 // Where the toasts appear. The toasts are drawn by the notifications service

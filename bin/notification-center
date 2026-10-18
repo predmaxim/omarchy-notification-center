@@ -275,6 +275,7 @@ ingest_file() {
     '{
        key: $key,
        app: (.app // ""),
+       desktopEntry: (.desktopEntry // ""),
        appIcon: $appIcon,
        summary: (.summary // ""),
        body: (.body // ""),
@@ -708,13 +709,25 @@ focus_window() {
     hyprctl dispatch focuswindow "address:$address" >/dev/null
 }
 
+# The sender's desktop-entry (DESKTOP, an id: no path) goes first: the name it
+# sends can be anything («Почта» for omarchy-mail.desktop's Name=Mail).
 cmd_open_app() {
-  local app=$1 desktop id class
-  [[ -n $app ]] || exit 1
-  desktop=$(grep -lixF "Name=$app" \
-    "${XDG_DATA_HOME:-$HOME/.local/share}"/applications/*.desktop /usr/share/applications/*.desktop 2>/dev/null | head -n 1)
+  local app=$1 entry=${2:-} desktop="" id class dir
+  [[ -n $app || -n $entry ]] || exit 1
+  if [[ $entry =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    for dir in "${XDG_DATA_HOME:-$HOME/.local/share}/applications" /usr/share/applications; do
+      if [[ -f $dir/$entry.desktop ]]; then
+        desktop=$dir/$entry.desktop
+        break
+      fi
+    done
+  fi
+  if [[ -z $desktop && -n $app ]]; then
+    desktop=$(grep -lixF "Name=$app" \
+      "${XDG_DATA_HOME:-$HOME/.local/share}"/applications/*.desktop /usr/share/applications/*.desktop 2>/dev/null | head -n 1)
+  fi
   if [[ -z $desktop ]]; then
-    focus_window "$app"
+    [[ -n $app ]] && focus_window "$app"
     exit
   fi
   id=$(basename -- "$desktop" .desktop)
@@ -733,7 +746,7 @@ cmd_click() {
   if [[ $key =~ ^[0-9]+-[0-9]+$ && $(omarchy-shell notifications invokeKey "$key" 2>/dev/null) == ok ]]; then
     return 0
   elif [[ ${1:-} == open-app ]]; then
-    cmd_open_app "${2:-}"
+    cmd_open_app "${2:-}" "${3:-}"
   elif (( $# )); then
     exec "$@"
   fi
@@ -754,7 +767,7 @@ case ${1:-} in
     printf '{"ok":true,"filled":%s}\n' "$(with_lock backfill_previews)"
     ;;
   prune)  shift; ensure_store; with_lock prune; printf '{"ok":true,"pruned":true}\n' ;;
-  open-app) shift; cmd_open_app "${1:-}" ;;
+  open-app) shift; cmd_open_app "${1:-}" "${2:-}" ;;
   click)  shift; cmd_click "$@" ;;
   *)
     cat >&2 <<'USAGE'
@@ -771,9 +784,11 @@ notification-center: the store behind the Omarchy notification center
   seed [N]           fill the archive with test traffic
   backfill           give older entries the picture their action points at
   prune              apply the retention limits now
-  open-app NAME      focus the app's window, or start it from its .desktop
+  open-app NAME [DESKTOP]
+                     focus the app's window, or start it from its .desktop
+                     (DESKTOP.desktop first, then the one named NAME)
   click KEY [CMD]    the sender's own click while the notifications service
-                     holds the notification, else CMD (open-app NAME or argv)
+                     holds the notification, else CMD (open-app … or argv)
 USAGE
     exit 64
     ;;
