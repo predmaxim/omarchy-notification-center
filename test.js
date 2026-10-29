@@ -65,6 +65,10 @@ assert.deepStrictEqual(M.activation({ app: "Yandex", body: "Яндекс.Пог�
 assert.deepStrictEqual(M.activation({ app: "Datebook" }, P), ["omarchy-shell", "predmaxim.datebook", "open"])
 assert.deepStrictEqual(M.activation({ app: "Jira" }, P), ["omarchy-shell", "predmaxim.jira", "open"])
 assert.deepStrictEqual(M.activation({ app: "omarchy-action", summary: "Reminder" }, P), ["/omarchy/bin/omarchy-reminder", "show"])
+// A crash toast is diagnosed by its PID, and only a PID passes
+assert.deepStrictEqual(M.activation({ app: "omarchy-action", summary: "Process crashed: biome", crashPid: "4242" }, P), ["/omarchy/bin/omarchy-agent-crash", "4242"])
+assert.strictEqual(M.activation({ app: "omarchy-action", summary: "Process crashed: biome", crashPid: "1; rm -rf ~" }, P), null)
+assert.strictEqual(M.activation({ app: "omarchy-action", summary: "Process crashed: biome" }, P), null)
 assert.deepStrictEqual(M.activation({ app: "Telegram Desktop" }, P), ["open-app", "Telegram Desktop"])
 // The sender's desktop-entry first (its .desktop: window by StartupWMClass, else launch); a name
 // that is no name (Почта) no longer stops it, and an entry that is no id is ignored

@@ -260,6 +260,7 @@ Panel {
       image: String(entry.image || ""),
       preview: String(entry.preview || ""),
       file: String(entry.file || ""),
+      crashPid: String(entry.crashPid || ""),
       glyph: String(entry.glyph || ""),
       urgency: Number(entry.urgency || 0),
       timestamp: Number(entry.timestamp || 0),

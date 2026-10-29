@@ -34,7 +34,9 @@ minutes later, in the middle of something else: *what did that say?*
   shell restart, is not the sender's any more. Without a held notification or
   without a `default` action (Datebook, Jira), the click goes to the sender: a
   site's web app (`omarchy-launch-or-focus-webapp`), Datebook/Jira's own
-  panel, reminders (`omarchy reminder show`), or the app's `.desktop` (the
+  panel, reminders (`omarchy reminder show`), a crash (`omarchy-agent-crash`
+  with its PID, the only part of the toast's command the archive keeps), or
+  the app's `.desktop` (the
   sender's `desktop-entry` first, then the one named like the app): its window
   by id or `StartupWMClass`, started if it has none (`notification-center
   open-app`). A sender that quit without closing its notifications leaves them

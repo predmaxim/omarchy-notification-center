@@ -16,4 +16,16 @@ printf '{"app":"Почта","summary":"s","body":"b","desktopEntry":"omarchy-mai
 NC_SRC_DIR=$src NC_SRC_HISTORY=$src/history "$(dirname "$0")/bin/notification-center" sync >/dev/null
 [[ $(jq -r 'select(.key == "9000000000000-3") | .desktopEntry' "$NC_STORE/archive.jsonl") == omarchy-mail ]] ||
   { echo "FAIL: desktopEntry -> $(grep 9000000000000-3 "$NC_STORE/archive.jsonl")"; exit 1; }
+
+# A crash toast's click command leaves only its PID in the archive; any other command, nothing.
+crash() {  # key execArgv-json want-crashPid
+  jq -nc --arg exec "$2" '{app:"omarchy-action",summary:"Process crashed: x",execArgv:$exec,timestamp:9000000000001}' > "$src/history/$1.json"
+  NC_SRC_DIR=$src NC_SRC_HISTORY=$src/history "$(dirname "$0")/bin/notification-center" sync >/dev/null
+  local line; line=$(grep "\"key\":\"$1\"" "$NC_STORE/archive.jsonl")
+  [[ $(jq -r '.crashPid' <<<"$line") == "$3" && $line != *cef_server* ]] || { echo "FAIL: crashPid $2 -> $line"; exit 1; }
+}
+crash 9000000000001-4 '["omarchy-agent-crash","4242","cef_server","/usr/bin/cef_server","SEGV"]' 4242
+crash 9000000000001-5 '["omarchy-agent-crash","1; rm -rf ~","cef_server"]' ""
+crash 9000000000001-6 '["bash","-c","omarchy-agent-crash 4242"]' ""
+crash 9000000000001-7 'omarchy-agent-crash 4242' ""
 echo ok

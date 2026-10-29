@@ -218,7 +218,7 @@ preview_source() {
 # replay the whole archive at both of them.
 ingest_file() {
   local file=$1 announce_existing=${2:-0}
-  local key entry app_icon image_src exec_src icon_copy image_copy file_src preview_copy
+  local key entry app_icon image_src exec_src icon_copy image_copy file_src preview_copy crash_pid
   key=$(basename -- "$file"); key=${key%.json}
   [[ -n $key ]] || return 0
   if is_dismissed "$key"; then
@@ -266,12 +266,21 @@ ingest_file() {
     preview_copy=$(copy_image "$file_src" "$key" "preview")
   fi
 
+  # A crash toast's click (omarchy-crash-watch: omarchy-agent-crash PID COMM
+  # EXE SIGNAL) keeps only the PID, digits, for the center's own click. The
+  # rest came from the crashed process and never reaches the archive.
+  crash_pid=$(printf '%s' "$exec_src" | jq -r '
+    if type == "array" and .[0] == "omarchy-agent-crash"
+       and (.[1] | type == "string" and test("^[1-9][0-9]{0,9}$"))
+    then .[1] else empty end' 2>/dev/null)
+
   entry=$(jq -c \
     --arg key "$key" \
     --arg appIcon "$icon_copy" \
     --arg image "$image_copy" \
     --arg preview "$preview_copy" \
     --arg file "$file_src" \
+    --arg crashPid "$crash_pid" \
     '{
        key: $key,
        app: (.app // ""),
@@ -282,6 +291,7 @@ ingest_file() {
        image: $image,
        preview: $preview,
        file: $file,
+       crashPid: $crashPid,
        glyph: (.glyph // ""),
        urgency: (.urgency // 1),
        timestamp: (.timestamp // 0)

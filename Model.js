@@ -131,6 +131,9 @@ function activation(entry, omarchyPath) {
   var source = BROWSER.test(String(entry.app || "")) ? String(entry.app) : sourceOf(entry)
   if (source === "Reminders") return [omarchyPath + "/bin/omarchy-reminder", "show"]
   if (PANELS[source]) return ["omarchy-shell", PANELS[source], "open"]
+  // A crash toast (omarchy-crash-watch): diagnose it, as its own click does.
+  var pid = String(entry.crashPid || "")
+  if (/^[1-9][0-9]{0,9}$/.test(pid)) return [omarchyPath + "/bin/omarchy-agent-crash", pid]
   if (source === "omarchy-action") return null
   var name = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(source) ? source : ""
   var desktop = String(entry.desktopEntry || "")
