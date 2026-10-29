@@ -52,7 +52,7 @@ Item {
   // icon, sent with it or else from its .desktop. Both may be missing, and the
   // fallback below covers that.
   readonly property string iconSource: image !== "" ? resolve(image)
-    : resolve(appIcon || Model.desktopIcon(app, DesktopEntries.applications.values))
+    : resolve(appIcon || Model.desktopIcon(app, DesktopEntries.applications.values, body))
   readonly property bool hasIcon: iconSource !== "" && icon.status !== Image.Error
   readonly property string initial: app === "" ? "?" : app.charAt(0).toUpperCase()
   readonly property bool hasPreview: showPreview && preview !== "" && previewImage.status !== Image.Error

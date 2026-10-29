@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pipewire
 
 // The archive, mounted once for the shell.
 //
@@ -201,6 +202,46 @@ Item {
     }
   }
 
+  // Showing the screen (Telemost, a browser: the Hyprland portal) silences
+  // notifications for as long as it lasts. The portal names its video streams
+  // xdph-streaming-*; their lifetime is the share, unlike frame activity,
+  // which screenshots and VNC have too.
+  readonly property var videoSources: Pipewire.nodes.values.filter(function(n) { return n.type === PwNodeType.VideoSource })
+  PwObjectTracker { objects: root.videoSources }
+  readonly property bool sharing: Pipewire.ready && videoSources.some(function(n) {
+    return n.ready && /^xdph-streaming-/.test(n.properties["media.name"] || n.properties["node.name"] || "")
+  })
+  property bool dnd: false
+  // Only a silence the share turned on ends with it: one already on stays,
+  // one turned off meanwhile stays off.
+  // shortcut: kept in memory, so a shell restart mid-share leaves the
+  // silence on after it; upgrade to a state file if that bites.
+  property bool sharingSilenced: false
+
+  function setDnd(on) {
+    Quickshell.execDetached(["bash", "-c", "omarchy-shell notifications setDnd \"$1\" >/dev/null; omarchy-shell -q omarchy.indicators refresh", "_", on ? "on" : "off"])
+  }
+
+  onSharingChanged: {
+    if (sharing && !dnd) {
+      sharingSilenced = true
+      setDnd(true)
+    } else if (!sharing && sharingSilenced) {
+      sharingSilenced = false
+      if (dnd) setDnd(false)
+    }
+  }
+
+  FileView {
+    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy/notifications.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try { root.dnd = JSON.parse(text()).dnd === true } catch (e) {}
+    }
+  }
+
   Component.onCompleted: {
     readSeen()
     load()
@@ -232,7 +273,10 @@ Item {
         unread: root.unread,
         watching: watchProc.running,
         loaded: root.loaded,
-        lastSeen: root.lastSeen
+        lastSeen: root.lastSeen,
+        sharing: root.sharing,
+        sharingSilenced: root.sharingSilenced,
+        dnd: root.dnd
       })
     }
   }

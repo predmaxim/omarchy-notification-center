@@ -118,6 +118,16 @@ assert.strictEqual(M.desktopIcon("org.telegram.desktop.desktop", apps), "telegra
 assert.strictEqual(M.desktopIcon("Blank", apps), "")
 assert.strictEqual(M.desktopIcon("notify-send", apps), "")
 assert.strictEqual(M.desktopIcon("", apps), "")
+// A site's notification: the icon of its web app, the .desktop that opens that site
+const webapps = apps.concat([{ name: "Telemost", id: "Telemost", icon: "telemost", startupClass: "", execString: 'omarchy-launch-webapp "https://telemost.360.yandex.ru/chat"' },
+  { name: "Chromium", id: "chromium", icon: "chromium", startupClass: "", execString: "/usr/bin/chromium %U" },
+  { name: "Evil", id: "evil", icon: "evil", startupClass: "", execString: 'omarchy-launch-webapp "https://telemost.360.yandex.ru.evil.com/"' }])
+const site = (host) => '<a href="https://' + host + '/">' + host + '</a>\nНовое сообщение'
+assert.strictEqual(M.desktopIcon("Chromium", webapps, site("telemost.360.yandex.ru")), "telemost")
+assert.strictEqual(M.desktopIcon("Chromium", webapps, site("telemost.yandex.ru")), "telemost")
+assert.strictEqual(M.desktopIcon("Chromium", webapps, site("mail.yandex.ru")), "chromium")
+assert.strictEqual(M.desktopIcon("Chromium", webapps, "no link"), "chromium")
+assert.strictEqual(M.desktopIcon("Chromium", webapps), "chromium")
 
 // Every tr() in the QML has a Russian line
 const I = new Function(load("I18n.js") + "; return { TABLES }")()

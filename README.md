@@ -68,7 +68,15 @@ minutes later, in the middle of something else: *what did that say?*
   builds and which reads the choice through `Model.popupPosition`.
 - **The sender's icon** when a notification brings none: the icon of the app's
   `.desktop`, found by name, id or window class (`Model.desktopIcon`), in the
-  list and, through the same clone, on the toast. No `.desktop`, no icon.
+  list and, through the same clone, on the toast; a site's, its web app's (the
+  `.desktop` whose `Exec` opens that site), not the browser's. No `.desktop`,
+  no icon.
+- **Showing the screen silences notifications.** While the Hyprland portal
+  shares a screen, window or area (Telemost, a browser), DND is on: the
+  service watches PipeWire for the portal's `xdph-streaming-*` video streams
+  and sets it through `omarchy-shell notifications setDnd`. When the share
+  ends, DND goes off again, but only if the share turned it on: one already
+  on stays on. A shell restart mid-share forgets that, and DND stays on.
 - Text in the system language (`I18n.js`, Russian). Kept for 30 days; the
   badge, list height and keep-days settings are gone.
 - Tests: `node test.js`, `./test-open-app.sh`, `./test-click.sh`, `./test-read.sh`, `./test-list.sh`, `./test-watch.sh`.

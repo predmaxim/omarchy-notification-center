@@ -171,10 +171,18 @@ function popupPlacement(position, barPosition, barClearance, gapsOut) {
 
 // The icon of the app that sent a notification without one: its .desktop,
 // found by name, id or window class the way `notification-center open-app`
-// finds it. entries are Quickshell DesktopEntry objects. "" when none.
-function desktopIcon(app, entries) {
+// finds it. entries are Quickshell DesktopEntry objects. "" when none. A
+// site's notification (body given) takes its web app's icon: the .desktop
+// that opens that site.
+function desktopIcon(app, entries, body) {
   var key = String(app || "").toLowerCase()
   if (key === "") return ""
+  var site = webApp({ app: app, body: body }, "")
+  if (site) {
+    var url = new RegExp("://" + site[2].split("/")[2].replace(/\./g, "\\.") + "(?![\\w.-])")
+    for (var j = 0; j < entries.length; j++)
+      if (url.test(String(entries[j].execString || "")) && entries[j].icon) return String(entries[j].icon)
+  }
   for (var i = 0; i < entries.length; i++) {
     var e = entries[i]
     if ([e.name, e.id, e.startupClass].some(function(v) { return String(v || "").toLowerCase() === key }))
