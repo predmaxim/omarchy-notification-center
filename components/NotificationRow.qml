@@ -208,7 +208,9 @@ Item {
         sourceSize.width: width * 2
         sourceSize.height: height * 2
         fillMode: Image.PreserveAspectFit
-        asynchronous: true
+        // Theme icons load on the GUI thread: QIcon is not thread-safe, and an
+        // off-thread image://icon load crashed Quickshell (Ideco's dialog-warning).
+        asynchronous: !String(source).startsWith("image://icon/")
         smooth: true
       }
     }
