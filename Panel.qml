@@ -381,41 +381,24 @@ Panel {
 
   // ------------------------------------------------------------------- panel
 
-  // A modal in the middle of the screen, like the todo list: a click on the
-  // dimmed screen or Esc closes it.
-  PanelWindow {
-    id: modal
-    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
-    visible: root.opened
-    color: Color.menu.scrim
-    exclusionMode: ExclusionMode.Ignore
-    anchors { top: true; bottom: true; left: true; right: true }
-    WlrLayershell.namespace: "notification-center"
-    WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-
-    MouseArea { anchors.fill: parent; onClicked: root.close() }
-
-    BorderSurface {
-      id: card
-      anchors.centerIn: parent
-      width: Math.min(Style.space(root.panelWidth), modal.width - Style.space(80))
-      height: Math.min(content.implicitHeight + contentTopInset + contentBottomInset, maxHeight)
-      readonly property real maxHeight: modal.height * 0.85
-      color: Color.popups.background
-      borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
-      padding: Style.spacing.panelPadding
-      radius: Style.cornerRadius
-
-      MouseArea { anchors.fill: parent }   // clicks on the card stay on it
+  // A panel under the bell, like the stock Wi-Fi and audio ones on the right of
+  // the bar: a click outside or Esc closes it.
+  KeyboardPanel {
+    id: panel
+    anchorItem: bellButton
+    owner: root
+    bar: root.bar
+    open: root.opened
+    focusTarget: search
+    contentWidth: panel.fittedContentWidth(Style.space(root.panelWidth))
+    contentHeight: panel.fittedContentHeight(content.implicitHeight)
+    // Room the card may take on this screen, for the list's cap.
+    readonly property real roomHeight: panel.availableCardHeight > 0
+      ? panel.availableCardHeight - panel.verticalContentInset : Style.space(900)
 
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      anchors.topMargin: card.contentTopInset
-      anchors.rightMargin: card.contentRightInset
-      anchors.bottomMargin: card.contentBottomInset
-      anchors.leftMargin: card.contentLeftInset
       // The search field has the keyboard and handles its own keys; this
       // only gets what it leaves.
       onCloseRequested: root.close()
@@ -546,8 +529,8 @@ Panel {
           // not push the footer out through the bottom of the card.
           // Grows with what it holds, up to what the card has left once the
           // header, the search field and the footer have had their share.
-          readonly property int cap: Math.max(Style.space(240), card.maxHeight - card.contentTopInset
-            - card.contentBottomInset - header.height - search.height - foot.implicitHeight - content.spacing * 3)
+          readonly property int cap: Math.max(Style.space(240), panel.roomHeight
+            - header.height - search.height - foot.implicitHeight - content.spacing * 3)
 
           height: Math.min(contentHeight, cap)
           visible: rows.count > 0 && !root.settingsOpen
@@ -769,6 +752,5 @@ Panel {
         }
       }
     }
-  }
   }
 }

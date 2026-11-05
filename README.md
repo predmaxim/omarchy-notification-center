@@ -46,7 +46,7 @@ minutes later, in the middle of something else: *what did that say?*
   `/chat`, where the site's service worker finds the window and opens the chat
   itself. Removing a notification here, or Clear, closes it at the sender too
   (`dismissKey`, `dismissEverything`).
-- **A modal in the middle of the screen** with a dimmed backdrop, a search
+- **A panel under the bell** (like the stock Wi-Fi and audio panels), a search
   field that always holds the keyboard (Up/Down pick, Enter opens, Delete
   removes, Esc clears then closes), and the Do Not Disturb button last in the
   header. Silenced, the bell is crossed out and red. DND is read from the
