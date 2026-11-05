@@ -49,7 +49,7 @@ BarIndicator {
   }
 
   FileView {
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/notifications.json"
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/notifications/quiet.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()

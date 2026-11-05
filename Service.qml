@@ -233,7 +233,7 @@ Item {
   }
 
   FileView {
-    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy/notifications.json"
+    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy/notifications/quiet.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()

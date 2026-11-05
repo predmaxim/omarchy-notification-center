@@ -50,7 +50,8 @@ minutes later, in the middle of something else: *what did that say?*
   field that always holds the keyboard (Up/Down pick, Enter opens, Delete
   removes, Esc clears then closes), and the Do Not Disturb button last in the
   header. Silenced, the bell is crossed out and red. DND is read from the
-  notification service's state file and toggled with
+  notification service's state file (`notifications/quiet.json` since
+  Omarchy 4.5, `notifications.json` before) and toggled with
   `omarchy-toggle-notification-silencing`: the shell does not hand its
   service to third-party plugins.
 - **The bell is an indicator** in the middle of the bar (`Indicator.qml`,
@@ -98,7 +99,7 @@ only the last ten per-notification files; newer builds keep up to a day and
 100 closed notifications in `history.json`. This reads every history rewrite
 and copies new entries, icon and all, into an archive kept for 30 days. On
 newer builds a notification reaches the center when it closes; `live.json`
-and `quiet.json` are left alone.
+is left alone and `quiet.json` is only read, for Do Not Disturb.
 
 - One card per notification, newest first, under the day it arrived on.
 - **A picture** when there was one. Cameras and screenshot tools hand their
