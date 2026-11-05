@@ -174,6 +174,14 @@ Panel {
   property bool settingsOpen: false
   // The row picked with Up/Down, -1 for none.
   property int cursor: -1
+  // -2: the header, where headCol picks the clear button (0), the gear (1) or
+  // the Do Not Disturb switch (2).
+  property int headCol: 1
+  // Settings page rows for the keyboard: -1 the header's Back, 0 the
+  // positions (←/→ pick), 1 Test, 2 Only important, 3.. the sources.
+  property int setCursor: 0
+  readonly property var positionValues: ["top-left", "top-center", "top-right", "bottom-left", "bottom-right"]
+  readonly property var sourceList: settingsOpen ? Model.sources(entries, important) : []
   property double now: Date.now()
 
   // The store counts everything; only what this panel would show is news.
@@ -201,17 +209,56 @@ Panel {
     onTriggered: root.now = Date.now()
   }
 
+  // ↑ from the first notification (or from none) goes up to the header, ↓
+  // from the header back to the list (dotfiles rules.md §9).
   function moveCursor(step) {
-    var next = cursor + step
-    if (next < -1 || next >= rows.count) return
+    var next = cursor === -2 ? (step > 0 ? (rows.count > 0 ? 0 : -2) : -2)
+      : (step < 0 && cursor <= 0) ? -2 : Math.min(rows.count - 1, cursor + step)
+    if (next === -2 && cursor !== -2) headCol = 1
     cursor = next
     if (cursor >= 0) list.positionViewAtIndex(cursor, ListView.Contain)
     else list.positionViewAtBeginning()
   }
+  function headerMove(dx) {
+    var first = root.entries.length > 0 ? 0 : 1
+    headCol = Math.max(first, Math.min(2, headCol + dx))
+  }
+  function headerActivate() {
+    if (headCol === 0 && root.entries.length > 0) root.clearAll()
+    else if (headCol === 1) root.toggleSettings()
+    else if (headCol === 2) root.toggleDnd()
+  }
+
+  // Settings page keys.
+  function settingsMove(dx, dy) {
+    var last = 2 + (root.onlyImportant ? root.sourceList.length : 0)
+    if (dy) { setCursor = Math.max(-1, Math.min(last, setCursor + dy)); return }
+    if (setCursor === 0) {
+      var i = positionValues.indexOf(root.popupPosition)
+      var next = positionValues[Math.max(0, Math.min(positionValues.length - 1, (i < 0 ? 2 : i) + dx))]
+      if (next !== root.popupPosition) root.saveSetting("popupPosition", next)
+    }
+  }
+  function settingsActivate() {
+    if (setCursor === -1) root.toggleSettings()
+    else if (setCursor === 1) root.sendTest()
+    else if (setCursor === 2) root.saveSetting("onlyImportant", !root.onlyImportant)
+    else if (setCursor >= 3) root.toggleSource(root.sourceList[setCursor - 3])
+  }
+  function sendTest() {
+    Quickshell.execDetached(["notify-send", "-a", "Notification Center", root.tr("Test notification"), root.tr("Notifications appear here")])
+  }
 
   function toggleSettings() {
     settingsOpen = !settingsOpen
-    if (!settingsOpen) Qt.callLater(function() { if (root.opened) search.forceActiveFocus() })
+    setCursor = 0
+    // The search field is gone on the settings page: the catcher takes the keys.
+    if (settingsOpen) Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+    else {
+      cursor = -2
+      headCol = 1
+      Qt.callLater(function() { if (root.opened) search.forceActiveFocus() })
+    }
   }
 
   Process { id: focusProc }
@@ -401,7 +448,9 @@ Panel {
       anchors.fill: parent
       // The search field has the keyboard and handles its own keys; this
       // only gets what it leaves.
-      onCloseRequested: root.close()
+      onCloseRequested: root.settingsOpen ? root.toggleSettings() : root.close()
+      onMoveRequested: function(dx, dy) { if (root.settingsOpen) root.settingsMove(dx, dy) }
+      onActivateRequested: if (root.settingsOpen) root.settingsActivate()
 
       Column {
         id: content
@@ -452,6 +501,7 @@ Panel {
               tooltipText: root.tr("Empty the panel")
               foreground: root.foreground
               fontFamily: root.fontFamily
+              hasCursor: !root.settingsOpen && root.cursor === -2 && root.headCol === 0
               enabled: root.entries.length > 0
               onClicked: root.clearAll()
             }
@@ -468,6 +518,7 @@ Panel {
               tooltipText: root.settingsOpen ? root.tr("Back") : root.tr("Settings")
               foreground: root.foreground
               fontFamily: root.fontFamily
+              hasCursor: root.settingsOpen ? root.setCursor === -1 : (root.cursor === -2 && root.headCol === 1)
               onClicked: root.toggleSettings()
             }
 
@@ -478,6 +529,7 @@ Panel {
               visible: !root.settingsOpen
               checked: !root.dnd
               foreground: root.foreground
+              hasCursor: !root.settingsOpen && root.cursor === -2 && root.headCol === 2
               onToggled: root.toggleDnd()
               PanelToolTip { visible: dndSwitch.containsMouse; text: root.dnd ? root.tr("Allow notifications") : root.tr("Silence notifications") }
             }
@@ -505,8 +557,11 @@ Panel {
           onTextEdited: root.cursor = -1
           Keys.onUpPressed: root.moveCursor(-1)
           Keys.onDownPressed: root.moveCursor(1)
-          Keys.onReturnPressed: root.activate(root.cursor >= 0 ? rows.get(root.cursor) : null)
-          Keys.onEnterPressed: root.activate(root.cursor >= 0 ? rows.get(root.cursor) : null)
+          // On the header ←/→ walk its buttons; elsewhere they move in the text.
+          Keys.onLeftPressed: function(event) { if (root.cursor === -2) root.headerMove(-1); else event.accepted = false }
+          Keys.onRightPressed: function(event) { if (root.cursor === -2) root.headerMove(1); else event.accepted = false }
+          Keys.onReturnPressed: root.cursor === -2 ? root.headerActivate() : root.activate(root.cursor >= 0 ? rows.get(root.cursor) : null)
+          Keys.onEnterPressed: root.cursor === -2 ? root.headerActivate() : root.activate(root.cursor >= 0 ? rows.get(root.cursor) : null)
           Keys.onDeletePressed: function(event) {
             if (root.cursor < 0) { event.accepted = false; return }
             root.remove(rows.get(root.cursor).key)
@@ -654,6 +709,8 @@ Panel {
               id: positions
               focusable: false
               value: root.popupPosition
+              // The chosen position carries the keyboard cursor on its row.
+              cursorIndex: root.settingsOpen && root.setCursor === 0 ? root.positionValues.indexOf(root.popupPosition) : -1
               foreground: root.foreground
               fontFamily: root.fontFamily
               options: [
@@ -675,8 +732,8 @@ Panel {
               foreground: root.foreground
               fontFamily: root.fontFamily
               bordered: true
-              onClicked: Quickshell.execDetached(["notify-send", "-a", "Notification Center",
-                root.tr("Test notification"), root.tr("Notifications appear here")])
+              hasCursor: root.setCursor === 1
+              onClicked: root.sendTest()
             }
           }
 
@@ -685,6 +742,7 @@ Panel {
             label: root.tr("Only important")
             description: root.tr("Show only the sources ticked below: messengers, mail, calendar, tasks, reminders")
             checked: root.onlyImportant
+            hasCursor: root.setCursor === 2
             foreground: root.foreground
             fontFamily: root.fontFamily
             onClicked: root.saveSetting("onlyImportant", !root.onlyImportant)
@@ -705,16 +763,19 @@ Panel {
             clip: true
             interactive: contentHeight > height
             boundsBehavior: Flickable.StopAtBounds
-            model: root.settingsOpen ? Model.sources(root.entries, root.important) : []
+            model: root.sourceList
             ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
             delegate: CursorSurface {
               id: sourceRow
               required property string modelData
+              required property int index
               width: ListView.view.width
               height: Math.max(Style.space(40), sourceName.implicitHeight + Style.spacing.rowPaddingX)
               foreground: root.foreground
-              hasCursor: sourceMouse.containsMouse
+              // Hover moves the same cursor (CursorSurface contract): one highlight.
+              hasCursor: root.setCursor === index + 3
+              onHasCursorChanged: if (hasCursor) ListView.view.positionViewAtIndex(index, ListView.Contain)
 
               Text {
                 id: sourceName
@@ -745,6 +806,7 @@ Panel {
                 anchors.fill: parent
                 anchors.rightMargin: sourceSwitch.width
                 hoverEnabled: true
+                onContainsMouseChanged: if (containsMouse) root.setCursor = sourceRow.index + 3
                 onClicked: root.toggleSource(sourceRow.modelData)
               }
             }

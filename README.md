@@ -48,7 +48,10 @@ minutes later, in the middle of something else: *what did that say?*
   (`dismissKey`, `dismissEverything`).
 - **A panel under the bell** (like the stock Wi-Fi and audio panels), a search
   field that always holds the keyboard (Up/Down pick, Enter opens, Delete
-  removes, Esc clears then closes), and the Do Not Disturb button last in the
+  removes, Esc clears then closes; Up from the first notification reaches the
+  header buttons, Left/Right between them, Enter presses one; on the settings
+  page Up/Down walk the rows, Left/Right pick the position, Enter toggles, Esc
+  goes back), and the Do Not Disturb button last in the
   header. Silenced, the bell is crossed out and red. DND is read from the
   notification service's state file (`notifications/quiet.json` since
   Omarchy 4.5, `notifications.json` before) and toggled with
