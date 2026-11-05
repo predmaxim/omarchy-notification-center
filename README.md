@@ -54,13 +54,11 @@ minutes later, in the middle of something else: *what did that say?*
   Omarchy 4.5, `notifications.json` before) and toggled with
   `omarchy-toggle-notification-silencing`: the shell does not hand its
   service to third-party plugins.
-- **The bell is an indicator** in the middle of the bar (`Indicator.qml`,
-  copied into the `predmaxim.indicators` clone by a hook in my dotfiles):
-  shown while there is something new (yellow) or notifications are silenced
-  (crossed out, red), otherwise only when the indicator group is hovered.
-  Right-click silences. The widget itself stays in the bar, hidden, for its
-  settings and IPC, and writes the count of new important notifications to
-  `unread` in the store for the indicator.
+- **The bell is the widget's own button**, always shown (right side of the
+  bar in my setup): yellow while something new and important has come in,
+  crossed out and red while notifications are silenced (the fixed colours,
+  `FixedColors.qml`), otherwise in the bar's colour. Click opens the center,
+  right-click silences.
 - **Where toasts appear**: a top corner, the top middle or a bottom corner,
   picked first thing in the gear, with a Test button beside it (`popupPosition`
   in the widget's `shell.json` entry). The

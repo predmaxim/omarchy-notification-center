@@ -357,23 +357,27 @@ Panel {
 
   // --------------------------------------------------------------------- bar
 
-  // The bell is among the bar's indicators (Indicator.qml, copied into the
-  // predmaxim.indicators clone by keep-custom-widgets.sh); the widget stays
-  // in the bar, hidden, for its settings and IPC. The indicator can't reach
-  // this plugin's service, so the count of new important notifications is
-  // left for it in a file.
-  visible: false
-  implicitWidth: 0
-  implicitHeight: 0
+  // The bell on the bar, always shown: yellow while something new and
+  // important has come in, red and crossed out while silenced (the fixed
+  // colours, FixedColors.qml). Click opens the center, right click silences.
+  implicitWidth: bellButton.implicitWidth
+  implicitHeight: bellButton.implicitHeight
 
-  FileView {
-    id: unreadFile
-    path: Quickshell.env("HOME") + "/.local/state/omarchy-notification-center/unread"
-    printErrors: false
+  BarIconButton {
+    id: bellButton
+    anchors.fill: parent
+    bar: root.bar
+    // U+F009B (bell-off), U+F009A (bell).
+    text: root.dnd ? "\uDB80\uDC9B" : "\uDB80\uDC9A"
+    tooltipText: root.dnd ? root.tr("Notifications silenced")
+      : root.unread > 0 ? root.tr("New: %1", root.unread) : root.tr("Notifications")
+    active: root.dnd || root.unread > 0
+    activeColor: root.dnd ? root.fixedColors.red : (root.fixedColors.values.yellow || "#d4a72c")
+    onPressed: function(button) {
+      if (button === Qt.RightButton) root.toggleDnd()
+      else root.toggle()
+    }
   }
-
-  onUnreadChanged: if (loaded) unreadFile.setText(String(unread))
-  onLoadedChanged: if (loaded) unreadFile.setText(String(unread))
 
   // ------------------------------------------------------------------- panel
 
