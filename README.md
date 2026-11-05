@@ -179,6 +179,14 @@ The panel opens over IPC, which is how you bind it to a key:
 omarchy-shell jankeesvw.notification-center toggle
 ```
 
+
+## Colours
+
+Status colours (the silenced bell's red, the unread bell's yellow) are fixed rather than the theme's, whose red or
+yellow can be any colour: `FixedColors.qml` reads them from
+`~/.config/omarchy/predmaxim/palette.json` (`{"red": "#e5534b", ...}`) and
+falls back to the theme's alert colour (and the theme's yellow) without that file.
+
 ## Tests
 
 Run `node --test` from the plugin directory for the JavaScript unit tests and

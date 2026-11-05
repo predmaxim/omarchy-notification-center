@@ -4,10 +4,12 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "@PLUGIN_DIR@/I18n.js" as I18n
+import "@PLUGIN_DIR@" as Center
 
 // The notification center among the bar's indicators: shown while something
-// new has come in (the bell in the theme's yellow) or notifications are
-// silenced (the bell crossed out, red), otherwise only when the group is hovered.
+// new has come in (the bell yellow) or notifications are silenced (the bell
+// crossed out, red), otherwise only when the group is hovered. Both colours
+// are the fixed palette's (FixedColors.qml), the theme's without it.
 // Click toggles the center (the hidden widget, Panel.qml), right-click
 // silences. The count comes from the file the widget keeps it in, DND from
 // the notification service's state file.
@@ -26,10 +28,12 @@ BarIndicator {
   inactiveText: "󰂚"
   activeTooltipText: dnd ? root.tr("Notifications silenced") : root.tr("New: %1", unread)
   inactiveTooltipText: root.tr("Notifications")
-  // The theme's alert colour (urgent), not its "red": themes set that to anything.
+  // Fixed colours, not the theme's: its red and yellow can be anything.
+  readonly property QtObject fixedColors: Center.FixedColors {}
   useActiveColor: true
-  activeColor: dnd ? Color.urgent : yellow
-  // Color has no yellow role: read it from the palette the way Color does.
+  activeColor: dnd ? fixedColors.red : (fixedColors.values.yellow || yellow)
+  // Without the fixed palette: the theme's yellow (Color has no yellow role,
+  // so it is read from the theme the way Color does).
   property color yellow: Color.accent
 
   onPressed: function(button) {

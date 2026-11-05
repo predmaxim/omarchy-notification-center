@@ -31,6 +31,8 @@ import "I18n.js" as I18n
 // editors and patches that mangle private-use codepoints.
 Panel {
   id: root
+  // Fixed status colours (FixedColors.qml): a theme's red can be any colour.
+  readonly property QtObject fixedColors: FixedColors {}
 
   moduleName: "jankeesvw.notification-center"
   ipcTarget: "jankeesvw.notification-center"
@@ -107,7 +109,7 @@ Panel {
 
   // Silenced: the bell is crossed out and red, on the bar and in the panel.
   // The theme's alert colour (urgent), not its "red": themes set that to anything.
-  readonly property color silencedColor: Color.urgent
+  readonly property color silencedColor: fixedColors.red
   function toggleDnd() {
     Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-toggle-notification-silencing"])
   }

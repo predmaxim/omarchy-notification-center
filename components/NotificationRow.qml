@@ -5,6 +5,7 @@ import qs.Commons
 import qs.Ui
 
 import "../Model.js" as Model
+import ".." as Center
 
 // One notification, as it reads after the fact.
 //
@@ -19,6 +20,8 @@ import "../Model.js" as Model
 // should feel like finding the toast you missed, still sitting where it landed.
 Item {
   id: root
+  // Fixed status colours (FixedColors.qml): a theme's red can be any colour.
+  readonly property QtObject fixedColors: Center.FixedColors {}
 
   property string app: ""
   property string appIcon: ""
@@ -141,7 +144,7 @@ Item {
       anchors.margins: Style.space(6)
       width: Style.space(3)
       radius: width / 2
-      color: Color.urgent
+      color: fixedColors.red
     }
 
     MouseArea {
