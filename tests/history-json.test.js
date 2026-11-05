@@ -177,3 +177,11 @@ test("an older notification closing later stays behind newer rows and cannot evi
   }
   assert.deepEqual(results, [["newer", "older"], ["newer", "older"], ["newer"], ["newer"]])
 })
+
+test("a browser row is archived with its raw body, site link and all", { skip }, t => {
+  const f = fixture(t)
+  f.atomic("history.json", [{ ...row("site"), app: "Chromium", body: "New message",
+    rawBody: "<a href=\"https://telemost.360.yandex.ru/\">telemost.360.yandex.ru</a>\n\nNew message" }])
+  f.run("sync")
+  assert.match(f.run("list")[0].body, /^<a href="https:\/\/telemost\.360\.yandex\.ru\/">/)
+})

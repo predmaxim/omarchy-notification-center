@@ -97,7 +97,10 @@ only the last ten per-notification files; newer builds keep up to a day and
 100 closed notifications in `history.json`. This reads every history rewrite
 and copies new entries, icon and all, into an archive kept for 30 days. On
 newer builds a notification reaches the center when it closes; `live.json`
-is left alone and `quiet.json` is only read, for Do Not Disturb.
+is left alone and `quiet.json` is only read, for Do Not Disturb. A browser's row is archived with its raw body, so the site link it opens
+with still tells the site; a click goes to the sender by the service's own
+key (`invokeKey`, my clone of the service keeps the notification alive past
+its toast).
 
 - One card per notification, newest first, under the day it arrived on.
 - **A picture** when there was one. Cameras and screenshot tools hand their

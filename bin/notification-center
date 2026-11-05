@@ -332,6 +332,8 @@ ingest_history() {
                          elif (.closed_ts | type) == "number" and .closed_ts > 0 then .closed_ts
                          else empty end) * 1000 | floor))
       | sort_by(.timestamp) | .[]
+      # The raw body keeps the site link of a browser (Model.sourceOf reads it).
+      | .body = (if (.rawBody // "") != "" then .rawBody else .body end)
       | .key + "\t" + ({app, appIcon, summary, body, glyph, urgency, execArgv, timestamp} | tojson)
     else empty end
   ' "$history_json" 2>/dev/null)
@@ -811,7 +813,8 @@ cmd_open_app() {
 cmd_click() {
   local key=${1:-}
   (( $# )) && shift
-  if [[ $key =~ ^[0-9]+-[0-9]+$ && $(omarchy-shell notifications invokeKey "$key" 2>/dev/null) == ok ]]; then
+  # Keys: <timestamp>-<id> (Omarchy before 4.5) or the service's own (4.5).
+  if [[ $key =~ ^[A-Za-z0-9_-]{1,120}$ && $(omarchy-shell notifications invokeKey "$key" 2>/dev/null) == ok ]]; then
     return 0
   elif [[ ${1:-} == open-app ]]; then
     cmd_open_app "${2:-}" "${3:-}"
