@@ -7,9 +7,10 @@
 # JSON file per popup and move it into history/, keeping only ten files.
 #
 # This copies notifications into a longer-lived archive, with their icons
-# beside them so an entry still has a face in a month. Aggregate history is
-# read on every rewrite and never changed here; live.json and quiet.json belong
-# to the service and are left alone.
+# beside them so an entry still has a face in a month. history.json and
+# live.json (the toasts on screen, so a notification is here as it arrives)
+# are read on every rewrite and never changed here; quiet.json is only read,
+# by the panel, for Do Not Disturb.
 #
 # Every subcommand prints JSON, one object or one array, including failures, so
 # nothing that goes wrong reaches the panel as a parse error.
@@ -24,14 +25,15 @@ umask 077
 state_home=${XDG_STATE_HOME:-$HOME/.local/state}
 
 # The service keeps history.json, live.json and quiet.json in src_dir on newer
-# builds. Only history.json is ingested. Older builds keep popups there and
-# move them into history/ when they close.
+# builds; history.json and live.json are ingested. Older builds keep popups
+# there and move them into history/ when they close.
 # Overridable so the whole thing can be pointed at a scratch directory and
 # driven by hand, which is the only way to exercise the watcher without waiting
 # for real notifications to arrive.
 src_dir=${NC_SRC_DIR:-$state_home/omarchy/notifications}
 src_history=${NC_SRC_HISTORY:-$src_dir/history}
 history_json="$src_dir/history.json"
+live_json="$src_dir/live.json"
 
 # Ours.
 store=${NC_STORE:-$state_home/omarchy-notification-center}
@@ -315,15 +317,12 @@ archive_entry() {
   printf '%s\n' "$entry"
 }
 
-# Aggregate history holds seconds, including fractions; the archive holds integer
-# milliseconds. Read oldest first so the newest rows stay at the archive's tail.
-ingest_history() {
-  [[ -s $history_json ]] || return 0
-  local key json
-  while IFS=$'\t' read -r key json; do
-    [[ -n $key ]] || continue
-    archive_entry "$key" "$json" 0
-  done < <(jq -r '
+# The rows of history.json (closed) or live.json (on screen), "key<TAB>json".
+# Aggregate files hold seconds, including fractions; the archive holds integer
+# milliseconds. Oldest first so the newest rows stay at the archive's tail.
+service_rows() {
+  [[ -s $1 ]] || return 0
+  jq -r '
     if type == "array" then
       map(select(type == "object")
         | select(.key | type == "string")
@@ -336,7 +335,35 @@ ingest_history() {
       | .body = (if (.rawBody // "") != "" then .rawBody else .body end)
       | .key + "\t" + ({app, appIcon, summary, body, glyph, urgency, execArgv, timestamp} | tojson)
     else empty end
-  ' "$history_json" 2>/dev/null)
+  ' "$1" 2>/dev/null
+}
+
+ingest_history() {
+  local key json
+  while IFS=$'\t' read -r key json; do
+    [[ -n $key ]] || continue
+    archive_entry "$key" "$json" 0
+  done < <(service_rows "$history_json")
+}
+
+# The toasts on screen: a notification is archived, and lights the bell, as it
+# arrives rather than when its toast closes. A sender replacing it
+# (replaces_id) keeps the service's key with new text, so the entry is
+# written again.
+ingest_live() {
+  local key json
+  while IFS=$'\t' read -r key json; do
+    [[ -n $key ]] || continue
+    if have_key "$key" && ! same_text "$key" "$json"; then
+      drop_entry "$key"
+    fi
+    archive_entry "$key" "$json" 0
+  done < <(service_rows "$live_json")
+}
+
+same_text() {
+  [[ $(grep -F "\"key\":\"$1\"" "$archive" | head -n 1 | jq -c '[.summary, .body]' 2>/dev/null) == \
+     $(jq -c '[.summary // "", .body // ""]' <<< "$2" 2>/dev/null) ]]
 }
 
 # Older builds keep separate files; newer ones rewrite history.json as rows
@@ -348,6 +375,7 @@ sync_all() {
     ingest_file "$file"
   done
   ingest_history
+  ingest_live
   for file in "$src_dir"/*.json; do
     [[ -e $file ]] || continue
     ingest_file "$file"
@@ -501,7 +529,8 @@ cmd_watch() {
     [[ $file == *.json ]] || continue
     case ${file##*/} in
       history.json) with_lock ingest_history_one ;;
-      live.json|quiet.json) continue ;;
+      live.json) with_lock ingest_live ;;
+      quiet.json) continue ;;
       *) with_lock ingest_one "$file" ;;
     esac
   done
@@ -538,12 +567,16 @@ cmd_list() {
     | jq -s --argjson limit "$limit" '.[:$limit]' 2>/dev/null || printf '[]\n'
 }
 
+drop_entry() {
+  grep -vF "\"key\":\"$1\"" "$archive" > "$archive.tmp" 2>/dev/null || : > "$archive.tmp"
+  mv -f "$archive.tmp" "$archive"
+}
+
 remove_key() {
   local key=$1
   [[ -n $key ]] || return 0
   printf '%s\n' "$key" >> "$dismissed_file"
-  grep -vF "\"key\":\"$key\"" "$archive" > "$archive.tmp" 2>/dev/null || : > "$archive.tmp"
-  mv -f "$archive.tmp" "$archive"
+  drop_entry "$key"
   rm -f -- "$images/$key-appIcon" "$images/$key-image" "$images/$key-preview"
   # Both directories, not only history: a notification dismissed while its
   # toast is still on screen is sitting in the popup directory, and leaving it

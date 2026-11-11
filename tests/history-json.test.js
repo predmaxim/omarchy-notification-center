@@ -81,16 +81,39 @@ test("remove and clear never touch Omarchy's own aggregate files", { skip }, t =
   assert.deepEqual(names.map(name => f.hash(path.join(f.src, name))), hashes)
 })
 
-test("watch ignores quiet.json and live.json", watchOptions, async t => {
+test("watch ignores quiet.json", watchOptions, async t => {
   const f = fixture(t)
   const watcher = f.watch()
   await watcher.until("D", () => {
     f.atomic("quiet.json", { dnd: true })
-    f.atomic("live.json", [row("live-only")])
     f.atomic("history.json", [row("D")])
   })
   assert.deepEqual(watcher.entries().map(r => r.key), ["D"])
   assert.deepEqual(f.run("list").map(r => r.key), ["D"])
+})
+
+test("watch archives a live.json row while its toast is still on screen", watchOptions, async t => {
+  const f = fixture(t)
+  const watcher = f.watch()
+  await watcher.until("on-screen", () => f.atomic("live.json", [row("on-screen")]))
+  f.atomic("live.json", [])
+  await watcher.until("D", () => f.atomic("history.json", [row("D", 1793000100.5), row("on-screen")]))
+  assert.deepEqual(watcher.entries().map(r => r.key), ["on-screen", "D"])
+  assert.deepEqual(f.run("list").map(r => r.key), ["D", "on-screen"])
+})
+
+test("a notification its sender replaces on screen keeps one entry with the new text", { skip }, t => {
+  const f = fixture(t)
+  f.atomic("live.json", [row("replaced")])
+  f.run("sync")
+  const replaced = { ...row("replaced", 1793000100.5), body: "Replaced body" }
+  f.atomic("live.json", [replaced])
+  f.run("sync")
+  f.atomic("live.json", [])
+  f.atomic("history.json", [replaced])
+  f.run("sync")
+  assert.deepEqual(f.run("list").map(r => [r.key, r.body, r.timestamp]),
+    [["replaced", "Replaced body", 1793000100500]])
 })
 
 test("rows past the archive ceiling are not archived again", { skip }, t => {
