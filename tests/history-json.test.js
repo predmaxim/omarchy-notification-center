@@ -96,8 +96,11 @@ test("watch archives a live.json row while its toast is still on screen", watchO
   const f = fixture(t)
   const watcher = f.watch()
   await watcher.until("on-screen", () => f.atomic("live.json", [row("on-screen")]))
-  f.atomic("live.json", [])
-  await watcher.until("D", () => f.atomic("history.json", [row("D", 1793000100.5), row("on-screen")]))
+  // Rewritten with the same text (another toast came or went): not printed again.
+  await watcher.until("D", () => {
+    f.atomic("live.json", [row("on-screen")])
+    f.atomic("history.json", [row("D", 1793000100.5), row("on-screen")])
+  })
   assert.deepEqual(watcher.entries().map(r => r.key), ["on-screen", "D"])
   assert.deepEqual(f.run("list").map(r => r.key), ["D", "on-screen"])
 })
@@ -141,6 +144,18 @@ test("a toast still on screen past the archive ceiling is not archived again", w
     f.atomic("live.json", [row("k1")])
     f.atomic("history.json", [row("k4", 1793000300), row("k3", 1793000200), row("k2", 1793000100)])
   })
+  assert.deepEqual(watcher.entries().map(r => r.key), ["k4"])
+})
+
+test("a damaged history.json does not hide the toasts on screen from the ceiling", watchOptions, async t => {
+  const f = fixture(t, { NC_MAX_ITEMS: "2" })
+  fs.writeFileSync(path.join(f.src, "history.json"), '[{"key":')
+  const onScreen = [row("k3", 1793000200), row("k2", 1793000100), row("k1")]
+  f.atomic("live.json", onScreen)
+  f.run("sync")
+  assert.deepEqual(f.run("list").map(r => r.key), ["k3", "k2"])
+  const watcher = f.watch()
+  await watcher.until("k4", () => f.atomic("live.json", [row("k4", 1793000300), ...onScreen]))
   assert.deepEqual(watcher.entries().map(r => r.key), ["k4"])
 })
 

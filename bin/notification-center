@@ -362,8 +362,9 @@ ingest_live() {
 }
 
 same_text() {
+  # Quoted: unquoted, the right side of == is a glob, and ["a","b"] never matches itself.
   [[ $(grep -F "\"key\":\"$1\"" "$archive" | head -n 1 | jq -c '[.summary, .body]' 2>/dev/null) == \
-     $(jq -c '[.summary // "", .body // ""]' <<< "$2" 2>/dev/null) ]]
+     "$(jq -c '[.summary // "", .body // ""]' <<< "$2" 2>/dev/null)" ]]
 }
 
 # Older builds keep separate files; newer ones rewrite history.json as rows
@@ -440,10 +441,12 @@ prune() {
   # from the toasts on screen (live.json).
   # Remember dropped keys just like dismissals so a rewrite cannot resurrect
   # them and evict newer entries on the next retention pass.
-  local key history_keys
-  # Partial output stays: one missing or damaged file does not hide the other's keys.
-  history_keys=$(jq -r 'if type == "array" then .[] | objects | .key | strings
-                        else empty end' "$history_json" "$live_json" 2>/dev/null) || :
+  local key history_keys file
+  # One jq per file: in one run a damaged history.json stops it before live.json.
+  history_keys=$(for file in "$history_json" "$live_json"; do
+    jq -r 'if type == "array" then .[] | objects | .key | strings
+           else empty end' "$file" 2>/dev/null
+  done)
   while IFS= read -r key; do
     [[ -n $key ]] || continue
     if grep -qxF -- "$key" <<< "$history_keys"; then

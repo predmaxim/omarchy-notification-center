@@ -121,13 +121,11 @@ Item {
     if (!entry || !entry.key) return
     // close_write and moved_to both fire for one popup; the second is dropped
     // by key. One watcher for the shell, so this is no longer a per-screen race.
-    // A key already here with new text is a replacement: the panel redraws.
-    var replaced = entries.some(function(e) { return e.key === entry.key })
+    // A key already here with new text is a replacement: it comes in as new.
     var next = Model.absorbed(entries, entry, pageSize)
     if (!next) return
     entries = next
-    if (replaced) entriesReset()
-    else entryAdded(entry)
+    entryAdded(entry)
   }
 
   Process {

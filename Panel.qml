@@ -274,6 +274,9 @@ Panel {
   function handleEntryAdded(entry) {
     if (!entry || !entry.key) return
     if (root.opened && store) store.markSeen()
+    // A sender's replacement (same key, new text) takes the old row's place.
+    for (var i = rows.count - 1; i >= 0; i--)
+      if (rows.get(i).key === entry.key) rows.remove(i)
     if (!matches(entry)) return
     rows.insert(0, rowFor(entry))
     if (root.opened && list.atYBeginning) Qt.callLater(function() {
