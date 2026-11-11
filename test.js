@@ -2,7 +2,7 @@
 const fs = require("fs")
 const assert = require("assert")
 const load = f => fs.readFileSync(__dirname + "/" + f, "utf8").replace(".pragma library", "")
-const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, siteRow, activation, popupPosition, popupPlacement, desktopIcon, keptToClose, liveId, DEFAULT_IMPORTANT }")()
+const M = new Function(load("Model.js") + "; return { sourceOf, isImportant, sources, webApp, siteClick, messageBody, siteRow, activation, popupPosition, popupPlacement, desktopIcon, keptToClose, liveId, absorbed, DEFAULT_IMPORTANT }")()
 
 const web = (host, text) => ({ app: "Chromium", summary: "Эхо", body: `<a href="https://${host}/">${host}</a>\n\n${text}` })
 
@@ -131,6 +131,15 @@ assert.strictEqual(M.desktopIcon("Chromium", webapps), "chromium")
 
 // Every tr() in the QML has a Russian line
 const I = new Function(load("I18n.js") + "; return { TABLES }")()
+// The watcher's line: new on top, the same one again dropped, a sender's
+// replacement (same key, new text) on top instead of the old one.
+const e = (key, summary, timestamp) => ({ key, summary, body: "", timestamp })
+const list = [e("b", "B", 2), e("a", "A", 1)]
+assert.deepStrictEqual(M.absorbed(list, e("c", "C", 3), 500).map(x => x.key), ["c", "b", "a"])
+assert.deepStrictEqual(M.absorbed(list, e("c", "C", 3), 2).map(x => x.key), ["c", "b"])
+assert.strictEqual(M.absorbed(list, e("a", "A", 1), 500), null)
+assert.deepStrictEqual(M.absorbed(list, e("a", "A2", 3), 500), [e("a", "A2", 3), e("b", "B", 2)])
+
 const qml = ["Panel.qml", "components/NotificationRow.qml"].map(load).join("\n")
 for (const m of qml.matchAll(/\btr\("((?:[^"\\]|\\.)*)"/g))
   assert.ok(Object.prototype.hasOwnProperty.call(I.TABLES.ru, JSON.parse(`"${m[1]}"`)), "no ru for: " + m[1])

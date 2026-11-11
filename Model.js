@@ -120,6 +120,20 @@ function liveId(key, shownAt) {
   return m && shownAt[m[2]] === Number(m[1]) ? Number(m[2]) : -1
 }
 
+// The list once the store's watcher printed entry, newest first and at most
+// limit long, or null when nothing changes: the same key, text and time again.
+// A sender replacing its notification on screen keeps the key with new text,
+// and the store wrote it again as the newest, so it moves to the top.
+function absorbed(entries, entry, limit) {
+  var rest = []
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i]
+    if (e.key !== entry.key) rest.push(e)
+    else if (e.timestamp === entry.timestamp && e.summary === entry.summary && e.body === entry.body) return null
+  }
+  return [entry].concat(rest).slice(0, limit)
+}
+
 // The command a click runs, as argv, or null. "open-app" is the store
 // script's subcommand: focus the app's window, or start it from its .desktop,
 // the sender's desktop-entry first (the name can be anything: «Почта»).

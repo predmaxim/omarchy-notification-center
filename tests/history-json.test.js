@@ -130,6 +130,20 @@ test("rows past the archive ceiling are not archived again", { skip }, t => {
   assert.equal(f.hash(path.join(f.src, "history.json")), sourceHash)
 })
 
+test("a toast still on screen past the archive ceiling is not archived again", watchOptions, async t => {
+  const f = fixture(t, { NC_MAX_ITEMS: "2" })
+  f.atomic("history.json", [row("k3", 1793000200), row("k2", 1793000100)])
+  f.atomic("live.json", [row("k1")])
+  f.run("sync")
+  assert.deepEqual(f.run("list").map(r => r.key), ["k3", "k2"])
+  const watcher = f.watch()
+  await watcher.until("k4", () => {
+    f.atomic("live.json", [row("k1")])
+    f.atomic("history.json", [row("k4", 1793000300), row("k3", 1793000200), row("k2", 1793000100)])
+  })
+  assert.deepEqual(watcher.entries().map(r => r.key), ["k4"])
+})
+
 test("missing, empty, truncated and non-array history do not crash sync", { skip }, t => {
   const f = fixture(t)
   for (const contents of [null, "", "[{\"key\":", "{}"]) {

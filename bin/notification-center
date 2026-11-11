@@ -436,12 +436,14 @@ prune() {
   printf '%s\n' "$kept" | grep -v '^$' > "$archive.tmp" || true
   mv -f "$archive.tmp" "$archive"
 
-  # Aggregate rows cannot be removed from the service's read-only history.
+  # Aggregate rows cannot be removed from the service's read-only history or
+  # from the toasts on screen (live.json).
   # Remember dropped keys just like dismissals so a rewrite cannot resurrect
   # them and evict newer entries on the next retention pass.
   local key history_keys
+  # Partial output stays: one missing or damaged file does not hide the other's keys.
   history_keys=$(jq -r 'if type == "array" then .[] | objects | .key | strings
-                        else empty end' "$history_json" 2>/dev/null) || history_keys=""
+                        else empty end' "$history_json" "$live_json" 2>/dev/null) || :
   while IFS= read -r key; do
     [[ -n $key ]] || continue
     if grep -qxF -- "$key" <<< "$history_keys"; then

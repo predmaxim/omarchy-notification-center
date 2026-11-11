@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import "Model.js" as Model
 
 // The archive, mounted once for the shell.
 //
@@ -120,13 +121,13 @@ Item {
     if (!entry || !entry.key) return
     // close_write and moved_to both fire for one popup; the second is dropped
     // by key. One watcher for the shell, so this is no longer a per-screen race.
-    for (var i = 0; i < entries.length; i++)
-      if (entries[i].key === entry.key) return
-
-    var next = [entry].concat(entries)
-    if (next.length > pageSize) next = next.slice(0, pageSize)
+    // A key already here with new text is a replacement: the panel redraws.
+    var replaced = entries.some(function(e) { return e.key === entry.key })
+    var next = Model.absorbed(entries, entry, pageSize)
+    if (!next) return
     entries = next
-    entryAdded(entry)
+    if (replaced) entriesReset()
+    else entryAdded(entry)
   }
 
   Process {
