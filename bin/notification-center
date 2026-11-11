@@ -595,13 +595,19 @@ cmd_seen() {
   printf '{"ok":true,"seen":%s}\n' "$(cat "$seen_file" 2>/dev/null || echo 0)"
 }
 
-# A toast that was clicked was read, though the center was never opened.
-cmd_read() {
-  ensure_store
-  [[ ${1:-} =~ ^[0-9]+-[0-9]+$ ]] || die "read needs a key"
+read_key() {
   printf '%s\n' "$1" >> "$read_file"
   # Newer than the last opening of the center only matters for so long.
   tail -n 500 "$read_file" > "$read_file.tmp" && mv -f "$read_file.tmp" "$read_file"
+}
+
+# A toast that was clicked was read, though the center was never opened.
+cmd_read() {
+  ensure_store
+  # Keys: <timestamp>-<id> (Omarchy before 4.5) or the service's own (4.5).
+  [[ ${1:-} =~ ^[A-Za-z0-9_-]{1,120}$ ]] || die "read needs a key"
+  # Locked: two clicks at once share read.tmp and lose each other's keys.
+  with_lock read_key "$1"
   printf '{"ok":true,"read":"%s"}\n' "$1"
 }
 

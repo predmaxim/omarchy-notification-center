@@ -46,6 +46,10 @@ minutes later, in the middle of something else: *what did that say?*
   `/chat`, where the site's service worker finds the window and opens the chat
   itself. Removing a notification here, or Clear, closes it at the sender too
   (`dismissKey`, `dismissEverything`).
+- **A toast clicked is read.** The clone runs `notification-center read
+  <key>` on a click; the key goes to `read` in the store, and the panel and
+  the bell no longer count it new, though the center was not opened. Keys are
+  `<timestamp>-<id>` before Omarchy 4.5 and the service's own after it.
 - **A panel under the bell** (like the stock Wi-Fi and audio panels), a search
   field that always holds the keyboard (Up/Down pick, Enter opens, Delete
   removes, Esc clears then closes; Up from the first notification reaches the
@@ -169,7 +173,7 @@ seed [N]           fill it with test traffic
 backfill           give older entries the picture their action points at
 ```
 
-`watch`, `sync`, `seen`, `unread` and `prune` are in there too; everything
+`watch`, `sync`, `seen`, `read`, `unread` and `prune` are in there too; everything
 prints JSON.
 
 ```bash
